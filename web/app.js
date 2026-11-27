@@ -563,9 +563,7 @@ function syncConfigForm() {
   elements.clearKey.textContent = state.config.api_key_from_file ? "Key 文件优先" : "清除已存 Key";
   state.clearKey = false;
   elements.effort.value = state.config.reasoning_effort;
-  elements.systemPrompt.value = state.config.system_prompt_from_file
-    ? "（系统提示词由本地文件加载；内容不会通过网页 API 返回）"
-    : state.config.system_prompt;
+  elements.systemPrompt.value = state.config.system_prompt_from_file ? "" : state.config.system_prompt;
   elements.systemPrompt.readOnly = Boolean(state.config.system_prompt_from_file);
   elements.systemPromptHint.textContent = state.config.system_prompt_from_file
     ? `当前使用文件：${state.config.system_prompt_file}；修改此文件后重启服务即可更新`
