@@ -367,5 +367,7 @@
     renderCodeBlock,
     normalizeBlocks,
     renderContent,
+    findStableBoundary,
+    createStreamingRenderer,
   });
 });
