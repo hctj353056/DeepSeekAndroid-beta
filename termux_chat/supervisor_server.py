@@ -6,7 +6,7 @@ import http.client
 import json
 import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from . import __version__
 from .server import MAX_BODY, trusted_api_request
@@ -160,7 +160,9 @@ def make_supervisor_handler(supervisor: RuntimeSupervisor):
             try:
                 logger = supervisor.diagnostics
                 if method == "GET" and path == "/api/diagnostics/export":
-                    archive = logger.export_zip(__version__)
+                    query = parse_qs(urlsplit(self.path).query)
+                    incident_id = query.get("issue_id", [""])[0]
+                    archive = logger.export_zip(__version__, incident_id)
                     self.send_response(200)
                     self.send_header("Content-Type", "application/zip")
                     self.send_header("Content-Length", str(len(archive)))
@@ -170,6 +172,11 @@ def make_supervisor_handler(supervisor: RuntimeSupervisor):
                     self.end_headers()
                     if self.command != "HEAD":
                         self.wfile.write(archive)
+                    return
+                if method == "POST" and path == "/api/diagnostics/incident":
+                    body = self._read_json()
+                    result = logger.save_incident(body)
+                    self._json(201, {"saved": True, **result})
                     return
                 if method == "POST" and path == "/api/diagnostics/report":
                     body = self._read_json()
@@ -201,7 +208,7 @@ def make_supervisor_handler(supervisor: RuntimeSupervisor):
             path = urlsplit(self.path).path
             if path.startswith("/api/") and not self._api_allowed(method):
                 return
-            if path in {"/api/diagnostics/report", "/api/diagnostics/client-event", "/api/diagnostics/export"}:
+            if path in {"/api/diagnostics/incident", "/api/diagnostics/report", "/api/diagnostics/client-event", "/api/diagnostics/export"}:
                 self._diagnostics(method, path)
             elif path.startswith("/api/dsa/"):
                 self._dsa(method, path)
