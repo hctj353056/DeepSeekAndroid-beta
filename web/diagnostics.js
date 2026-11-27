@@ -79,6 +79,7 @@
     pushEvent("issue.capture_started");
     startButton.hidden = true;
     finishButton.hidden = false;
+    activeIssueId = "";
     status.textContent = "正在记录。请继续复现问题；记录只保存在本机。";
     if (count) count.textContent = String(events.length);
   });
@@ -87,9 +88,10 @@
     finishButton.disabled = true;
     pushEvent("issue.capture_finished");
     status.textContent = "正在整理问题现场…";
+    const note = redact(noteInput ? noteInput.value.trim() : "").slice(0, 2000);
     const payload = {
-      title: "用户标记的问题",
-      note: redact(noteInput ? noteInput.value.trim() : "").slice(0, 2000),
+      title: note.split("\\n")[0].slice(0, 80) || "用户标记的问题",
+      note,
       app_version: document.querySelector('meta[name="app-version"]')?.content || "unknown",
       user_agent: navigator.userAgent.slice(0, 300),
       events: events.slice(-MAX_EVENTS)
@@ -97,6 +99,8 @@
     try {
       const result = await postIncident(payload);
       activeIssueId = result.id || "";
+      if (noteInput) noteInput.value = "";
+      pushEvent("issue.saved", { issue_id: activeIssueId });
       recording = false;
       startButton.hidden = false;
       finishButton.hidden = true;
@@ -148,7 +152,7 @@
     pushEvent("network.started", { method, path: pathname.slice(0, 160) });
     try {
       const response = await nativeFetch(input, init);
-      pushEvent("network.completed", { method, path: pathname.slice(0, 160), status: response.status, duration_ms: Math.round(performance.now() - started) });
+      pushEvent("network.completed", { method, path: pathname.slice(0, 160), status: response.status, headers_ms: Math.round(performance.now() - started) });
       return response;
     } catch (error) {
       pushEvent("network.failed", { method, path: pathname.slice(0, 160), error: redact(error && error.message).slice(0, 300), duration_ms: Math.round(performance.now() - started) });
