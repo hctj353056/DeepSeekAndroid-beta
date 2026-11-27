@@ -72,6 +72,12 @@ DEEPSEEK_API_KEY="你的 Key" python main.py
 
 环境变量优先于 `001.key`。网页设置中输入的 Key 也会写入项目根目录的 `001.key`；`data/settings.json` 不再保存 API Key。`GET /api/config` 不会返回 Key。
 
+### DSA 诊断日志
+
+遇到界面或功能异常时，点击聊天顶部「日志」，填写操作、实际现象、预期结果和复现步骤，然后保存并导出 ZIP。日志由稳定宿主统一管理，A/B 主体切换或候选测试不会改变日志位置。
+
+诊断文件位于 `data/diagnostics/`，使用 JSONL 格式并自动轮转。导出包只包含诊断日志和环境信息，不打包会话历史、设置文件或 API Key 文件。自动浏览器事件仅记录事件类型和级别，不记录错误消息或聊天正文；用户主动填写的测试报告会被记录。分享前请自行检查诊断包。
+
 ## 回答渲染（V0.0.6）
 
 `web/response-renderer.js` 是独立的回答渲染模块，由 `web/app.js` 的消息入口调用，不改变模型适配器、Agent、插件或 A/B 主体协议。运行时无第三方 Python 依赖、无外部 CDN、无前端构建步骤。代码高亮使用本地 vendored highlight.js 11.12.0（BSD-3-Clause），相关许可证随仓库提供。
