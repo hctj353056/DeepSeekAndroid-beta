@@ -12,7 +12,12 @@ const elements = {
   provider: $("#providerInput"), model: $("#modelInput"), baseUrl: $("#baseUrlInput"),
   apiKey: $("#apiKeyInput"), apiKeyHint: $("#apiKeyHint"), clearKey: $("#clearKeyButton"),
   effort: $("#effortInput"), systemPrompt: $("#systemPromptInput"), systemPromptHint: $("#systemPromptHint"), theme: $("#themeInput"),
-  pluginsDialog: $("#pluginsDialog"), pluginList: $("#pluginList"), toast: $("#toast"),
+  pluginsDialog: $("#pluginsDialog"), pluginList: $("#pluginList"),
+  runtimeDialog: $("#runtimeDialog"), runtimeBadge: $("#runtimeBadge"),
+  activeVersion: $("#activeVersion"), activeSlot: $("#activeSlot"), activeRuntimeDetail: $("#activeRuntimeDetail"),
+  candidateStatus: $("#candidateStatus"), prepareCandidate: $("#prepareCandidate"),
+  activateCandidate: $("#activateCandidate"), rollbackRuntime: $("#rollbackRuntime"), versionList: $("#versionList"),
+  toast: $("#toast"),
 };
 
 const state = {
@@ -24,6 +29,8 @@ const state = {
   controller: null,
   requestId: null,
   clearKey: false,
+  dsa: null,
+  dsaBusy: false,
   options: { thinking: true, web_search: false, read_url: false },
 };
 
@@ -618,6 +625,103 @@ async function togglePlugin(button) {
   }
 }
 
+function renderRuntime() {
+  const dsa = state.dsa;
+  elements.prepareCandidate.disabled = !dsa || state.dsaBusy;
+  elements.activateCandidate.disabled = true;
+  elements.rollbackRuntime.disabled = true;
+  if (!dsa) {
+    elements.versionList.innerHTML = '<div class="list-placeholder">无法读取主体状态</div>';
+    return;
+  }
+  const active = dsa.slots[dsa.active_slot] || {};
+  const activeBusy = Number(active.active_requests || 0) > 0;
+  const candidate = dsa.candidate || { status: "empty" };
+  elements.runtimeBadge.textContent = dsa.active_version_id || "—";
+  elements.activeVersion.textContent = dsa.active_version_id || "—";
+  elements.activeSlot.textContent = `槽位 ${dsa.active_slot || "—"}`;
+  elements.activeRuntimeDetail.textContent = active.runtime_version
+    ? `运行时 v${active.runtime_version} · ${activeBusy ? `${active.active_requests} 个请求正在生成` : "当前没有生成中的回复"}`
+    : "活动主体状态未知";
+
+  const messages = [];
+  let failed = false;
+  if (state.dsaBusy) {
+    const busyText = {
+      candidate: "正在冻结实验源码，并在备用槽使用隔离数据检查…",
+      activate: "正在用正式数据复核候选并执行原子切换…",
+      rollback: "正在检查回滚目标并恢复上一版本…",
+    };
+    messages.push(busyText[state.dsaAction] || "正在处理主体操作…");
+  } else if (candidate.status === "ready") {
+    messages.push(`${candidate.version_id} 已在槽位 ${candidate.slot} 通过隔离检查，可以激活。`);
+  } else if (candidate.status === "failed") {
+    failed = true;
+    messages.push(`${candidate.version_id} 检查失败，当前生产主体未受影响。${candidate.error || ""}`);
+  } else if (candidate.status === "checking") {
+    messages.push(`${candidate.version_id} 正在进行隔离检查…`);
+  } else {
+    messages.push("修改实验源码后，先准备候选；检查通过后再激活。");
+  }
+  if (activeBusy) messages.push("当前有回复正在生成，完成排空后才能激活或回滚。");
+  elements.candidateStatus.classList.toggle("error", failed);
+  elements.candidateStatus.textContent = messages.join(" ");
+  elements.activateCandidate.disabled = state.dsaBusy || candidate.status !== "ready" || activeBusy;
+  elements.rollbackRuntime.disabled = state.dsaBusy || !dsa.previous_version_id || activeBusy;
+
+  if (!dsa.versions.length) {
+    elements.versionList.innerHTML = '<div class="list-placeholder">还没有版本快照</div>';
+    return;
+  }
+  elements.versionList.innerHTML = dsa.versions.map((version) => `
+    <div class="version-item">
+      <div class="version-heading">
+        <strong>${escapeHtml(version.id)}</strong>
+        ${version.active ? '<span class="status-badge current">当前</span>' : ""}
+        ${version.rollback_target ? '<span class="status-badge">回滚目标</span>' : ""}
+      </div>
+      <div class="version-meta">父版本 ${escapeHtml(version.parent_id || "无")} · ${escapeHtml(formatDate(version.created_at))}</div>
+      <code class="version-hash" title="${escapeHtml(version.source_hash)}">${escapeHtml(version.source_hash.slice(0, 12))}</code>
+    </div>`).join("");
+}
+
+async function loadRuntimeStatus() {
+  if (state.dsaBusy) return;
+  state.dsa = await api("/api/dsa/status");
+  renderRuntime();
+}
+
+async function runRuntimeAction(action) {
+  if (state.dsaBusy) return;
+  state.dsaBusy = true;
+  state.dsaAction = action;
+  renderRuntime();
+  let switching = false;
+  try {
+    const result = await api(`/api/dsa/${action}`, { method: "POST", body: {} });
+    state.dsa = result;
+    if (action === "candidate") {
+      toast(`${result.active_version_id} 保持运行，${result.candidate.version_id} 已通过隔离检查`);
+    } else {
+      switching = true;
+      toast(action === "activate" ? `已激活 ${result.active_version_id}，正在刷新` : `已回滚至 ${result.active_version_id}，正在刷新`);
+      window.setTimeout(() => window.location.reload(), 900);
+    }
+  } catch (error) {
+    await loadRuntimeStatusWithoutLock().catch(() => {});
+    toast(error.message || String(error));
+  } finally {
+    state.dsaBusy = false;
+    state.dsaAction = "";
+    if (!switching) renderRuntime();
+  }
+}
+
+async function loadRuntimeStatusWithoutLock() {
+  state.dsa = await api("/api/dsa/status");
+  renderRuntime();
+}
+
 function guarded(handler) {
   return async (event) => {
     try { await handler(event); } catch (error) { toast(error.message || String(error)); }
@@ -631,6 +735,11 @@ function bindEvents() {
   $("#newChatSide").addEventListener("click", newChat);
   $("#newChatTop").addEventListener("click", newChat);
   $("#openSettings").addEventListener("click", openSettings);
+  $("#openRuntime").addEventListener("click", guarded(async () => {
+    closeSidebar();
+    if (!elements.runtimeDialog.open) elements.runtimeDialog.showModal();
+    await loadRuntimeStatus();
+  }));
   $("#openPlugins").addEventListener("click", () => {
     renderPlugins();
     closeSidebar();
@@ -685,7 +794,7 @@ function bindEvents() {
         provider: elements.provider.value,
         model: elements.model.value,
         base_url: elements.baseUrl.value,
-        reasoning_effort: elements.effort.value,
+        reasoning_effort: elements.reasoning_effort,
         system_prompt: elements.systemPrompt.value,
       };
       if (state.clearKey) updates.api_key = null;
@@ -706,10 +815,13 @@ function bindEvents() {
     const button = event.target.closest(".switch");
     if (button) togglePlugin(button);
   });
+  elements.prepareCandidate.addEventListener("click", guarded(() => runRuntimeAction("candidate")));
+  elements.activateCandidate.addEventListener("click", guarded(() => runRuntimeAction("activate")));
+  elements.rollbackRuntime.addEventListener("click", guarded(() => runRuntimeAction("rollback")));
   document.querySelectorAll("[data-close]").forEach((button) => {
     button.addEventListener("click", () => document.getElementById(button.dataset.close).close());
   });
-  for (const dialog of [elements.settingsDialog, elements.pluginsDialog]) {
+  for (const dialog of [elements.settingsDialog, elements.pluginsDialog, elements.runtimeDialog]) {
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   }
   document.addEventListener("click", guarded(async (event) => {
@@ -738,12 +850,13 @@ async function init() {
   applyTheme(theme);
   resizeInput();
   try {
-    const [config, conversations, plugins] = await Promise.all([
-      api("/api/config"), api("/api/conversations"), api("/api/plugins"),
+    const [config, conversations, plugins, dsa] = await Promise.all([
+      api("/api/config"), api("/api/conversations"), api("/api/plugins"), api("/api/dsa/status"),
     ]);
     state.config = config;
     state.conversations = conversations.conversations;
     state.plugins = plugins.plugins;
+    state.dsa = dsa;
     state.options.thinking = config.thinking;
     state.options.web_search = config.web_search;
     state.options.read_url = config.read_url;
@@ -751,12 +864,16 @@ async function init() {
     syncOptions();
     renderConversations();
     renderPlugins();
+    renderRuntime();
     if (state.conversations.length) await loadConversation(state.conversations[0].id);
   } catch (error) {
     elements.runtimeStatus.textContent = "本地服务连接失败";
     elements.welcomeHint.textContent = error.message;
     toast(error.message);
   }
+  window.setInterval(() => {
+    if (elements.runtimeDialog.open && !state.dsaBusy) loadRuntimeStatus().catch(() => {});
+  }, 2000);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }
