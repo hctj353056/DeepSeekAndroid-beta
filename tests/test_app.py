@@ -5,6 +5,7 @@ import json
 import tempfile
 import threading
 import unittest
+import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -106,6 +107,25 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(assistant_with_call["reasoning_content"], "需要先读取设备时间。")
         saved = self.context.store.get(conversation["id"])
         self.assertEqual([message["role"] for message in saved["messages"]], ["user", "assistant", "tool", "assistant"])
+
+    def test_deepseek_adapter_retries_transient_tls_eof_before_stream(self) -> None:
+        settings = self.context.settings
+        settings.update({"api_key": "test-key"})
+        request = {
+            "model": "deepseek-flash",
+            "messages": [{"role": "user", "content": "hello"}],
+            "thinking": True,
+            "reasoning_effort": "high",
+            "tools": [],
+        }
+        eof = urllib.error.URLError(__import__("ssl").SSLEOFError(
+            __import__("ssl").SSL_ERROR_EOF, "UNEXPECTED_EOF_WHILE_READING"))
+        stream_bytes = b"data: [DONE]\\n\\n"
+        with patch("plugins.deepseek.plugin.urllib.request.urlopen", side_effect=[eof, io.BytesIO(stream_bytes)]) as open_url, \\
+             patch("plugins.deepseek.plugin.time.sleep"):
+            events = list(DeepSeekProvider(settings).stream(request, threading.Event()))
+        self.assertEqual(open_url.call_count, 2)
+        self.assertEqual(events, [])
 
     def test_deepseek_adapter_emits_server_tool_calls_from_final_chunk(self) -> None:
         payload = {
