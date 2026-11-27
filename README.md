@@ -253,7 +253,7 @@ python -m unittest discover -s tests -v
 node --test tests/test_response_renderer.js
 ```
 
-Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 10 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。现有 CI 继续在 Python 3.10／3.12 上执行；10 项 Node.js 渲染测试已在本地 Node 20 环境验证，本期未修改 CI 工作流。
+Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 10 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 10 项回答渲染测试；PR 目标分支支持 main 与 release/**。
 
 本版本已在 Linux／Chromium 中通过真实 SSE 检查长回答、表格、长代码、代码复制、深浅主题及 375／768／1024px 布局；表格与代码只在各自容器内横向滚动，用户上翻后不会被流式输出强制拉回，控制台无错误。测试未使用真实 API Key，尚未在真实 Termux 设备上执行；实际回答仍需有效 Key 和网络连接。
 
