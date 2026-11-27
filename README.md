@@ -229,3 +229,37 @@ V0.0.1 的详细启动参数、数据说明和功能边界可通过以下命令�
 ```bash
 python deepseek_mobile.py --help
 ```
+
+
+## 从项目目录加载主体配置（V0.0.4）
+
+可以不在网页设置中粘贴系统提示词或 API Key。启动时设置插件会优先读取项目根目录下的本地文件：
+
+```text
+DeepSeekAndroid-beta/
+├── 001.key                 # DeepSeek API Key，纯文本，一行即可
+└── 灵魂架构/
+    └── 灵魂架构.md          # 系统提示词，支持 Markdown
+```
+
+在项目根目录执行（已有文件时不要覆盖）：
+
+```bash
+mkdir -p "灵魂架构"
+touch "001.key"
+touch "灵魂架构/灵魂架构.md"
+```
+
+用文本编辑器填写 `001.key` 和 `灵魂架构/灵魂架构.md`。提示词文件存在且非空时，它将覆盖网页设置中的系统提示词；提示词正文只在后端读取，不会通过本地网页 API 回传。Key 文件存在且非空时优先使用，网页设置中的 Key 不会覆盖它。环境变量 `DEEPSEEK_API_KEY` 优先级最高。
+
+也可以通过环境变量指定其他文件路径：
+
+```bash
+DEEPSEEK_API_KEY_FILE="/绝对路径/your.key" \
+DEEPSEEK_SYSTEM_PROMPT_FILE="/绝对路径/identity.md" \
+python main.py --open
+```
+
+文件内容修改后，重启服务即可重新加载。项目根目录的 `001.key` 与 `灵魂架构/` 已加入 `.gitignore`，不会被 Git 提交；分享或发布项目时请确认没有把个人提示词或 Key 打包进去。
+
+**安全提醒：** 若项目位于 Android 共享存储 `/storage/emulated/0/`，Key 文件是明文，其他拥有共享存储访问权限的应用可能读取。更安全的做法是将 Key 放在 Termux 私有目录（例如 `$HOME/.config/deepseek/001.key`），并通过 `DEEPSEEK_API_KEY_FILE` 指向它。共享存储上的文件权限不能可靠地限制其他应用读取。
