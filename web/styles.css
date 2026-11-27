@@ -413,7 +413,7 @@ body[data-theme="dark"] .markdown .hljs-section { color: #8ab4ff; }
 .diagnostics-button svg { width: 17px; height: 17px; }
 
 /* Issue-capture experience: compact, action-first, and touch-friendly. */
-.issue-capture-card { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.issue-capture-card { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-normal); border-radius: 16px; background: var(--bg-elevated); }
 .issue-capture-state { display: flex; align-items: flex-start; gap: 9px; line-height: 1.5; }
 .issue-state-dot { flex: 0 0 9px; width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: var(--text-secondary); }
 .issue-event-summary { margin: 0; color: var(--text-secondary); font-size: 13px; }
