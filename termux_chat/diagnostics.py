@@ -165,10 +165,15 @@ class DiagnosticLogger:
                 incident = json.loads(source.read_text(encoding="utf-8"))
                 archive.writestr("issue.json", json.dumps(incident, ensure_ascii=False, indent=2))
                 archive.writestr("issue.md", self._incident_markdown(incident))
-                timeline = "".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\\n"
+                timeline = "".join(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n"
                                    for event in incident.get("events", []))
                 archive.writestr("timeline.jsonl", timeline)
                 manifest["issue_id"] = safe_id
+                for name in ["app.log", *(f"app.log.{i}" for i in range(1, self.backups + 1))]:
+                    log_source = self.directory / name
+                    if log_source.is_file():
+                        archive.write(log_source, f"logs/{name}")
+                        manifest["log_files"].append(name)
             else:
                 for name in ["app.log", *(f"app.log.{i}" for i in range(1, self.backups + 1))]:
                     source = self.directory / name
