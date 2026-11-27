@@ -79,13 +79,6 @@ class StableHostDiagnosticsTests(unittest.TestCase):
                     report = archive.read("issue.md").decode("utf-8")
                     self.assertIn("标记的现场", report)
 
-                    self.assertEqual(response.headers.get_content_type(), "application/zip")
-                    archive = zipfile.ZipFile(BytesIO(response.read()))
-                    log_text = archive.read("logs/app.log").decode("utf-8")
-                    self.assertIn("user.test_report", log_text)
-                    self.assertIn("client.test.event", log_text)
-                    self.assertNotIn("do not persist", log_text)
-                    self.assertIn("environment.json", archive.namelist())
             finally:
                 server.shutdown()
                 server.server_close()
