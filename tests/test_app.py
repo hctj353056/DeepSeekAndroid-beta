@@ -124,7 +124,7 @@ class AppTestCase(unittest.TestCase):
             "[DONE]",
         ]
         stream_bytes = b"".join(
-            b"data: " + (item if isinstance(item, str) else json.dumps(item).encode()) + b"\\n\\n"
+            b"data: " + (item if isinstance(item, str) else json.dumps(item).encode()) + b"\n\n"
             for item in chunks
         )
         settings = self.context.settings
