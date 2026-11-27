@@ -38,7 +38,7 @@ class DeepSeekProvider:
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream",
-                "User-Agent": "DeepSeek-Termux/0.0.4",
+                "User-Agent": "DeepSeek-Termux/0.0.5",
             },
         )
         response = None
