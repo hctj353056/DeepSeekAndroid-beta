@@ -59,5 +59,37 @@ class DiagnosticLoggerTests(unittest.TestCase):
                 self.assertIn("excluded", manifest["included_data"])
 
 
+    def test_issue_capture_exports_readable_report_and_jsonl_timeline(self):
+        with tempfile.TemporaryDirectory() as temp:
+            logger = DiagnosticLogger(Path(temp))
+            result = logger.save_incident({
+                "title": "公式没有渲染",
+                "note": "响应中出现 Bearer abcdefghijklmnop",
+                "events": [
+                    {"ts": "2026-11-27T10:00:00Z", "type": "network.completed", "details": {"status": 200}},
+                    {"ts": "2026-11-27T10:00:01Z", "type": "javascript.error", "details": {"message": "render failed"}},
+                ],
+            })
+            archive_bytes = logger.export_zip("test-version", result["id"])
+            with zipfile.ZipFile(BytesIO(archive_bytes)) as archive:
+                names = archive.namelist()
+                self.assertIn("issue.md", names)
+                self.assertIn("issue.json", names)
+                self.assertIn("timeline.jsonl", names)
+                report = archive.read("issue.md").decode("utf-8")
+                self.assertIn("公式没有渲染", report)
+                lines = archive.read("timeline.jsonl").decode("utf-8").splitlines()
+                self.assertEqual(len(lines), 2)
+                self.assertEqual(json.loads(lines[0])["type"], "network.completed")
+                issue = json.loads(archive.read("issue.json"))
+                self.assertIn("[REDACTED]", issue["note"])
+
+    def test_issue_export_rejects_unknown_or_path_like_id(self):
+        with tempfile.TemporaryDirectory() as temp:
+            logger = DiagnosticLogger(Path(temp))
+            with self.assertRaises(ValueError):
+                logger.export_zip("test-version", "../../private")
+
+
 if __name__ == "__main__":
     unittest.main()
