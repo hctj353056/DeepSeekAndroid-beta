@@ -64,7 +64,7 @@ def main() -> None:
     print("API Key 文件：001.key（首次启动自动创建；文件为明文，请勿分享）")
     for warning in getattr(context.settings, "file_warnings", []):
         print(f"[配置文件警告] {warning}")
-    print("按 Ctrl+C 停止。\\n")
+    print("按 Ctrl+C 停止。\n")
     if args.open:
         open_browser(url)
     try:
