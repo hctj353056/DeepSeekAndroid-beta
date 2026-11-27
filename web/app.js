@@ -11,7 +11,7 @@ const elements = {
   settingsDialog: $("#settingsDialog"), settingsForm: $("#settingsForm"),
   provider: $("#providerInput"), model: $("#modelInput"), baseUrl: $("#baseUrlInput"),
   apiKey: $("#apiKeyInput"), apiKeyHint: $("#apiKeyHint"), clearKey: $("#clearKeyButton"),
-  effort: $("#effortInput"), systemPrompt: $("#systemPromptInput"), theme: $("#themeInput"),
+  effort: $("#effortInput"), systemPrompt: $("#systemPromptInput"), systemPromptHint: $("#systemPromptHint"), theme: $("#themeInput"),
   pluginsDialog: $("#pluginsDialog"), pluginList: $("#pluginList"), toast: $("#toast"),
 };
 
@@ -551,15 +551,23 @@ function syncConfigForm() {
   elements.model.value = state.config.model;
   elements.baseUrl.value = state.config.base_url;
   elements.apiKey.value = "";
-  elements.apiKey.placeholder = state.config.api_key_set ? "已保存；留空则不修改" : "输入 DeepSeek API Key";
+  elements.apiKey.placeholder = state.config.api_key_from_file
+    ? "已由项目目录 Key 文件提供"
+    : (state.config.api_key_set ? "已保存；留空则不修改" : "输入 DeepSeek API Key");
   elements.apiKeyHint.textContent = state.config.api_key_from_env
     ? "当前使用环境变量中的 Key"
-    : (state.config.api_key_set ? "已保存于本机，不会回显" : "Key 仅写入本机设置文件");
-  elements.clearKey.disabled = state.config.api_key_from_env;
-  elements.clearKey.textContent = "清除已存 Key";
+    : (state.config.api_key_from_file
+      ? `优先读取文件：${state.config.api_key_file}（文件为明文）`
+      : (state.config.api_key_set ? "已保存于本机设置文件，不会回显" : "Key 可放在项目根目录 001.key"));
+  elements.clearKey.disabled = state.config.api_key_from_env || state.config.api_key_from_file;
+  elements.clearKey.textContent = state.config.api_key_from_file ? "Key 文件优先" : "清除已存 Key";
   state.clearKey = false;
   elements.effort.value = state.config.reasoning_effort;
   elements.systemPrompt.value = state.config.system_prompt;
+  elements.systemPrompt.readOnly = Boolean(state.config.system_prompt_from_file);
+  elements.systemPromptHint.textContent = state.config.system_prompt_from_file
+    ? `当前使用文件：${state.config.system_prompt_file}；修改此文件后重启服务即可更新`
+    : "未找到提示词文件，当前使用本机设置中的提示词";
   let theme = "auto";
   try { theme = localStorage.getItem("deepseek-termux-theme") || "auto"; } catch { /* 本地存储不可用时使用自动主题 */ }
   elements.theme.value = theme;
