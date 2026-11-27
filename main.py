@@ -60,7 +60,11 @@ def main() -> None:
     print(f"\nDeepSeek Termux v{__version__}")
     print(f"打开：{url}")
     print(f"插件：{sum(item.enabled for item in manager.records.values())}/{len(manager.records)} 已启用")
-    print("按 Ctrl+C 停止。API Key 仅保存在本机 data/settings.json。\n")
+    print("主体架构文件：灵魂架构/灵魂架构.md（首次启动自动创建）")
+    print("API Key 文件：001.key（首次启动自动创建；文件为明文，请勿分享）")
+    for warning in getattr(context.settings, "file_warnings", []):
+        print(f"[配置文件警告] {warning}")
+    print("按 Ctrl+C 停止。\\n")
     if args.open:
         open_browser(url)
     try:
