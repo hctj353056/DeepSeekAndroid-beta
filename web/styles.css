@@ -252,6 +252,9 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .dialog-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 64px; padding: 8px 12px 8px 22px; border-bottom: 1px solid var(--border-soft); }
 .dialog-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
 .dialog-body { padding: 20px 22px; overflow-y: auto; overscroll-behavior: contain; }
+/* Plugin dialog: keep the header visible and let the list scroll on short mobile viewports. */
+.plugins-dialog[open] { display: flex; flex-direction: column; height: 90dvh; max-height: calc(100dvh - 24px); }
+.plugins-dialog > .dialog-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .dialog-footer { display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; padding: 14px 20px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border-soft); }
 .primary-button, .secondary-button { min-height: 44px; padding: 0 18px; border-radius: 11px; font-size: 14px; font-weight: 550; }
 .primary-button { border: 1px solid var(--accent); background: var(--accent); color: var(--p-white); }
