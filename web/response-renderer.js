@@ -66,6 +66,7 @@
 
     text = escapeHtml(text);
     text = text
+      .replace(/~~([^~\n]+)~~/g, (_, content) => stash(`<del>${content}</del>`))
       .replace(/\*\*\*([^*\n]+)\*\*\*/g, (_, content) => stash(`<strong><em>${content}</em></strong>`))
       .replace(/\*\*([^*\n]+)\*\*/g, (_, content) => stash(`<strong>${content}</strong>`))
       .replace(/__([^_\n]+)__/g, (_, content) => stash(`<strong>${content}</strong>`))
@@ -164,25 +165,51 @@
     return { html: `${html}</tbody></table></div>`, next: index };
   }
 
-  function renderMarkdown(source) {
-    const lines = String(source ?? "").replace(/\r\n?/g, "\n").split("\n");
-    const output = [];
-    let index = 0;
+  function renderList(lines, start) {
+    const first = lines[start].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+    if (!first) return null;
+    const baseIndent = first[1].length;
+    const type = /^\d/.test(first[2]) ? "ol" : "ul";
+    let index = start;
+    let html = "<" + type + ">";
     while (index < lines.length) {
-      const line = lines[index];
-      if (!line.trim()) { index += 1; continue; }
-
-      const fence = line.match(/^\s*```([^`\n]*)\s*$/);
-      if (fence) {
-        const language = fence[1].trim();
-        const code = [];
-        index += 1;
-        while (index < lines.length && !/^\s*```\s*$/.test(lines[index])) {
-          code.push(lines[index]);
+      const marker = lines[index].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+      if (!marker) break;
+      const indent = marker[1].length;
+      const markerType = /^\d/.test(marker[2]) ? "ol" : "ul";
+      if (indent < baseIndent || (indent === baseIndent && markerType !== type)) break;
+      if (indent > baseIndent) {
+        const nested = renderList(lines, index);
+        if (!nested) break;
+        html += nested.html;
+        index = nested.next;
+        continue;
+      }
+      const task = marker[3].match(/^\[([ xX])\]\s+(.*)$/);
+      const item = task
+        ? '<input type="checkbox" disabled' + (task[1].toLowerCase() === "x" ? " checked" : "") + ' aria-label="任务状态"> ' + inlineMarkdown(task[2])
+        : inlineMarkdown(marker[3]);
+      html += "<li>" + item;
+      index += 1;
+      while (index < lines.length) {
+        const next = lines[index].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+        if (!next || next[1].length <      if (/^\s*>\s?/.test(line)) {
+        const quote = [];
+        while (index < lines.length && /^\s*>\s?/.test(lines[index])) {
+          quote.push(lines[index].replace(/^\s*>\s?/, ""));
           index += 1;
         }
-        if (index < lines.length) index += 1;
-        output.push(renderCodeBlock(code.join("\n"), language));
+        output.push("<blockquote>" + renderMarkdown(quote.join("\n")) + "</blockquote>");
+        continue;
+      }
+      const list = renderList(lines, index);
+      if (list) {
+        output.push(list.html);
+        index = list.next;
+        continue;
+      }
+
+uage));
         continue;
       }
       if (isTable(lines, index)) {
