@@ -24,7 +24,7 @@ class SupervisorHTTPServer(ThreadingHTTPServer):
 
 def make_supervisor_handler(supervisor: RuntimeSupervisor):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "DeepSeekTermux/0.0.5"
+        server_version = "DeepSeekTermux/0.0.6"
         protocol_version = "HTTP/1.1"
 
         def log_message(self, fmt, *args):

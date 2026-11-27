@@ -41,7 +41,7 @@ class RuntimeSupervisorTestCase(unittest.TestCase):
     def test_candidate_activation_and_rollback_keep_source_generations_separate(self) -> None:
         original = self.supervisor.active_handle()
         self.assertEqual(original.version_id, "v1")
-        self.assertEqual(self.supervisor._health(original.port)["version"], "0.0.5")
+        self.assertEqual(self.supervisor._health(original.port)["version"], "0.0.6")
 
         self.set_lab_runtime_version("0.0.5-candidate")
         status = self.supervisor.prepare_candidate()
@@ -50,7 +50,7 @@ class RuntimeSupervisorTestCase(unittest.TestCase):
         self.assertEqual(status["candidate"]["status"], "ready")
         self.assertEqual(status["candidate"]["version_id"], "v2")
         self.assertFalse(status["slots"]["B"]["shared_data"])
-        self.assertEqual(self.supervisor._health(original.port)["version"], "0.0.5")
+        self.assertEqual(self.supervisor._health(original.port)["version"], "0.0.6")
         self.assertEqual(self.supervisor._health(self.supervisor.slots["B"].port)["version"], "0.0.5-candidate")
 
         status = self.supervisor.activate()
@@ -65,7 +65,7 @@ class RuntimeSupervisorTestCase(unittest.TestCase):
         self.assertEqual(status["active_version_id"], "v1")
         self.assertEqual(status["active_slot"], "A")
         self.assertEqual(status["previous_version_id"], "v2")
-        self.assertEqual(self.supervisor._health(self.supervisor.active_handle().port)["version"], "0.0.5")
+        self.assertEqual(self.supervisor._health(self.supervisor.active_handle().port)["version"], "0.0.6")
         versions = self.supervisor.store.list()
         self.assertEqual([item["id"] for item in versions], ["v2", "v1"])
         self.assertNotEqual(versions[0]["source_hash"], versions[1]["source_hash"])
