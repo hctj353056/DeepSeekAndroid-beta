@@ -103,6 +103,41 @@ class AppTestCase(unittest.TestCase):
         saved = self.context.store.get(conversation["id"])
         self.assertEqual([message["role"] for message in saved["messages"]], ["user", "assistant", "tool", "assistant"])
 
+    def test_server_tool_calls_round_trip_unchanged(self) -> None:
+        conversation = self.context.store.create()
+        server_calls = [{
+            "step": 1,
+            "calls": [{
+                "id": "srv_call_1",
+                "type": "server_tool_use",
+                "action": {"type": "web_search", "query": "test"},
+                "signature": "opaque-signature-must-not-change",
+            }],
+        }]
+        self.context.store.append(conversation["id"], {
+            "role": "assistant",
+            "content": "",
+            "server_tool_calls": server_calls,
+        })
+        rebuilt = self.context.store.model_messages(conversation["id"], include_reasoning=True)
+        self.assertEqual(rebuilt[0]["server_tool_calls"], server_calls)
+        self.assertEqual(rebuilt[0]["server_tool_calls"][0]["calls"][0]["signature"],
+                         "opaque-signature-must-not-change")
+
+    def test_local_api_rejects_cross_origin_and_simple_form_requests(self) -> None:
+        self.assertTrue(trusted_api_request(
+            "127.0.0.1:8080", "http://127.0.0.1:8080", "application/json", "same-origin",
+            8080, "127.0.0.1", "POST"))
+        self.assertFalse(trusted_api_request(
+            "attacker.example:8080", "http://attacker.example:8080", "application/json", "same-origin",
+            8080, "127.0.0.1", "POST"))
+        self.assertFalse(trusted_api_request(
+            "127.0.0.1:8080", "http://attacker.example", "application/json", "cross-site",
+            8080, "127.0.0.1", "POST"))
+        self.assertFalse(trusted_api_request(
+            "127.0.0.1:8080", "", "application/x-www-form-urlencoded", "same-origin",
+            8080, "127.0.0.1", "POST"))
+
     def test_cancellation_is_reported(self) -> None:
         conversation = self.context.store.create()
         stream = self.context.chat.stream(conversation["id"], "请回答", {}, "req-cancel")
