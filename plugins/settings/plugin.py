@@ -104,6 +104,7 @@ class Settings:
                 legacy_key = str(saved.get("api_key") or "").strip()
                 if legacy_key and not self._file_text(self.api_key_file) and not os.environ.get("DEEPSEEK_API_KEY"):
                     self._write_key_file(legacy_key)
+                    self._save()  # Migrate old plaintext Key out of settings.json.
                 self._values["api_key"] = ""
         except FileNotFoundError:
             pass
