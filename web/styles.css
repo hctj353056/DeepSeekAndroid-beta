@@ -307,3 +307,15 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* DSA diagnostic capture and export panel. */
+.diagnostics-dialog { width: min(620px, calc(100vw - 24px)); max-height: min(90dvh, 900px); }
+.diagnostics-body { overflow-y: auto; }
+.diagnostics-form { display: grid; gap: 12px; }
+.diagnostics-form .field { margin: 0; }
+.diagnostics-form textarea { min-height: 54px; resize: vertical; }
+.diagnostics-form .primary-button { width: 100%; }
+.diagnostics-export { width: 100%; margin-top: 12px; }
+.diagnostics-status { margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; overflow-wrap: anywhere; }
+.diagnostics-button { color: var(--text-secondary); }
