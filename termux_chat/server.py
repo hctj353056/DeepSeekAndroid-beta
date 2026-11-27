@@ -127,7 +127,7 @@ def make_handler(context, plugin_manager, web_root: Path):
                         raise RuntimeError("诊断日志服务未初始化")
                     event = str(body.get("event", "client.event"))[:80]
                     message = str(body.get("message", ""))[:1500]
-                    diagnostics.record("WARN", "client." + event, {"message": message})
+                    level = str(body.get("level", "INFO")).upper()\n                    if level not in {"INFO", "WARN", "ERROR"}:\n                        level = "INFO"\n                    diagnostics.record(level, "client." + event, {"message": message})
                     self._json(202, {"saved": True})
                 elif path == "/api/health" and method == "GET":
                     self._json(200, {
