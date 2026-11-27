@@ -186,7 +186,7 @@ class AppTestCase(unittest.TestCase):
                 (folder / "plugin.json").write_text(json.dumps({
                     "id": plugin_id, "name": plugin_id, "requires": requires,
                 }), encoding="utf-8")
-                (folder / "plugin.py").write_text("def apply(ctx):\\n    return None\\n", encoding="utf-8")
+                (folder / "plugin.py").write_text("def apply(ctx):\n    return None\n", encoding="utf-8")
             manager = PluginManager(root, Context(), root / "data")
             with self.assertRaisesRegex(RuntimeError, "依赖循环"):
                 manager.enable("alpha")
@@ -203,7 +203,7 @@ class AppTestCase(unittest.TestCase):
             (folder / "plugin.json").write_text(json.dumps({
                 "id": "alpha", "name": "alpha", "requires": ["missing_plugin"],
             }), encoding="utf-8")
-            (folder / "plugin.py").write_text("def apply(ctx):\\n    return None\\n", encoding="utf-8")
+            (folder / "plugin.py").write_text("def apply(ctx):\n    return None\n", encoding="utf-8")
             manager = PluginManager(root, Context(), root / "data")
             with self.assertRaisesRegex(RuntimeError, "依赖不存在"):
                 manager.enable("alpha")
