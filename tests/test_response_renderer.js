@@ -162,3 +162,14 @@ test("renders nested lists and nested blockquotes", () => {
   const quote = renderer.renderMarkdown("> 外层\n> > 内层");
   assert.match(quote, /<blockquote><p>外层<\/p><blockquote><p>内层<\/p><\/blockquote><\/blockquote>/);
 });
+
+
+test("highlights known code languages while preserving safe code fallback", () => {
+  const html = renderer.renderCodeBlock("const answer = 42;", "javascript");
+  assert.match(html, /class="hljs language-javascript"/);
+  assert.match(html, /class="hljs-keyword">const<\/span>/);
+  assert.match(html, /class="hljs-number">42<\/span>/);
+  const plain = renderer.renderCodeBlock("<img src=x onerror=alert(1)>", "unknown-language");
+  assert.match(plain, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(plain, /<img\b/);
+});
