@@ -1,4 +1,4 @@
-"""DeepSeek OpenAI 兼容流式适配器，仅使用 urllib。"""
+"""DeepSeek Chat Completions 流式适配器，仅使用 urllib。"""
 
 from __future__ import annotations
 
@@ -70,6 +70,18 @@ class DeepSeekProvider:
                         "name": function.get("name", ""),
                         "arguments": function.get("arguments", ""),
                     }
+                # DeepSeek 服务端联网工具的完整调用只在最后一个 chunk 中出现。
+                # 必须原样保存并在后续请求中回传，尤其是链接阅读的 signature。
+                if "server_tool_calls" in delta:
+                    yield {
+                        "type": "server_tool_calls",
+                        "server_tool_calls": delta["server_tool_calls"],
+                    }
+                if "annotations" in delta:
+                    yield {"type": "annotations", "annotations": delta["annotations"]}
+                server_event = choice.get("server_tool_event")
+                if server_event:
+                    yield {"type": "server_tool_event", "event": server_event}
                 if choice.get("finish_reason"):
                     yield {"type": "finish", "reason": choice["finish_reason"]}
         except urllib.error.HTTPError as exc:
