@@ -72,11 +72,24 @@ DEEPSEEK_API_KEY="你的 Key" python main.py
 
 环境变量优先于 `001.key`。网页设置中输入的 Key 也会写入项目根目录的 `001.key`；`data/settings.json` 不再保存 API Key。`GET /api/config` 不会返回 Key。
 
+### DSA 问题现场记录
+
+发现界面或功能异常时，点击聊天顶部「问题」，再点击「标记问题 / 开始记录」。系统会保留本地最近约 3 分钟内的安全事件，并继续记录操作和程序状态；复现后点击「结束并保存现场」，可补充一句说明并导出问题报告 ZIP。
+
+问题报告包含：
+- `issue.md`：人类和 AI 可直接阅读的问题摘要；
+- `issue.json`：结构化问题记录；
+- `timeline.jsonl`：按时间排序的用户操作、网络状态和前端异常；
+- `environment.json` 与 `logs/`：运行环境及稳定宿主诊断日志。
+
+记录在本机内存缓冲并由用户主动标记后保存，不自动上传。不会自动记录聊天正文、输入框内容或请求响应体；点击与表单事件只保存控件标识，不保存文本值。用户补充的备注会写入报告，分享前请检查。
+
+旧版「导出诊断日志」接口仍保留，可导出基础诊断 ZIP。
 ## 回答渲染（V0.0.6）
 
-`web/response-renderer.js` 是独立的回答渲染模块，由 `web/app.js` 的消息入口调用，不改变模型适配器、Agent、插件或 A/B 主体协议。运行时无第三方依赖、无外部 CDN、无构建步骤。
+`web/response-renderer.js` 是独立的回答渲染模块，由 `web/app.js` 的消息入口调用，不改变模型适配器、Agent、插件或 A/B 主体协议。运行时无第三方 Python 依赖、无外部 CDN、无前端构建步骤。代码高亮使用本地 vendored highlight.js 11.12.0（BSD-3-Clause），相关许可证随仓库提供。
 
-当前支持：1—6 级标题、段落、无序与有序列表、引用、HTTP／HTTPS 链接、粗体、斜体、粗斜体、行内代码、代码围栏、水平分隔线及 GFM 风格表格。代码保留语言标签与复制按钮，代码块和表格分别在自身容器内横向滚动。未闭合代码围栏按仍在累积的代码处理，不支持或无法识别的语法回退为安全文本。
+当前实现：1—6 级标题、段落、无序与有序列表、嵌套列表、嵌套引用、任务清单（禁用复选框）、GFM 删除线、HTTP／HTTPS 链接、粗体、斜体、粗斜体、行内代码、代码围栏、水平分隔线及 GFM 风格表格。代码保留语言标签与复制按钮；常见语言使用本地 highlight.js 进行语法高亮，未知语言安全回退为纯代码文本。代码块和表格分别在自身容器内横向滚动。未闭合代码围栏按仍在累积的代码处理，不支持或无法识别的语法回退为安全文本。
 
 安全边界：所有模型文本默认转义，不执行原始 HTML、脚本或事件属性；链接仅允许 HTTP／HTTPS，新窗口链接带 `noopener noreferrer nofollow`。行内代码不会被强调或链接规则二次改写。
 
@@ -253,7 +266,7 @@ python -m unittest discover -s tests -v
 node --test tests/test_response_renderer.js
 ```
 
-Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 12 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 12 项回答渲染测试；PR 目标分支支持 main 与 release/**。
+Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块现有 16 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏、ContentBlock 回退、流式增量渲染、删除线、任务清单及嵌套结构。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 16 项回答渲染测试；PR 检查支持 main、release/**、feature/** 与 fix/** 分支。
 
 本版本已在 Linux／Chromium 中通过真实 SSE 检查长回答、表格、长代码、代码复制、深浅主题及 375／768／1024px 布局；表格与代码只在各自容器内横向滚动，用户上翻后不会被流式输出强制拉回，控制台无错误。测试未使用真实 API Key，尚未在真实 Termux 设备上执行；实际回答仍需有效 Key 和网络连接。
 

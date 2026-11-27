@@ -9,8 +9,10 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <script src="/vendor/highlight.min.js" defer></script>
   <script src="/response-renderer.js" defer></script>
   <script src="/app.js" defer></script>
+  <script src="/diagnostics.js" defer></script>
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true">
@@ -62,6 +64,7 @@
       <header class="topbar">
         <button id="menuButton" class="icon-button mobile-only" aria-label="打开侧边栏"><svg><use href="#i-menu"/></svg></button>
         <h1 id="conversationTitle" class="conversation-title">新对话</h1>
+        <button id="diagnosticsButton" class="icon-button diagnostics-button" aria-label="问题记录" title="问题记录"><svg><use href="#i-copy"/></svg><span>问题</span></button>
         <button id="newChatTop" class="icon-button" aria-label="新对话"><svg><use href="#i-plus"/></svg></button>
       </header>
 
@@ -147,6 +150,22 @@
         <h3 id="historyTitle">历史版本</h3>
         <div id="versionList" class="version-list"><div class="list-placeholder">正在读取版本…</div></div>
       </section>
+    </div>
+  </dialog>
+
+  <dialog id="diagnosticsDialog" class="dialog diagnostics-dialog" aria-labelledby="diagnosticsTitle">
+    <header class="dialog-header"><h2 id="diagnosticsTitle">问题现场</h2><button type="button" class="icon-button" data-close="diagnosticsDialog" aria-label="关闭问题记录"><svg><use href="#i-close"/></svg></button></header>
+    <div class="dialog-body diagnostics-body">
+      <p class="dialog-intro">发现异常时点击「标记问题」。系统会把此前约 3 分钟内的操作和程序事件保存在本机，并继续记录，帮助 AI 还原现场。不会自动记录聊天正文或输入内容。</p>
+      <section class="issue-capture-card">
+        <div class="issue-capture-state"><span class="issue-state-dot"></span><strong id="diagnosticsStatus" role="status" aria-live="polite">当前没有正在记录的问题</strong></div>
+        <p class="issue-event-summary">现场事件：<strong id="issueEventCount">0</strong> 条（最多保留 300 条）</p>
+        <button id="issueStart" type="button" class="primary-button">标记问题 / 开始记录</button>
+        <button id="issueFinish" type="button" class="primary-button" hidden>结束并保存现场</button>
+      </section>
+      <label class="field issue-note-field"><span>补充一句（可选）</span><textarea id="issueNote" rows="3" maxlength="2000" placeholder="例如：回答里的公式没有渲染，显示成原始代码"></textarea></label>
+      <button id="diagnosticsExport" type="button" class="secondary-button diagnostics-export">导出问题报告（ZIP）</button>
+      <p class="security-note">记录只保存在本机。导出后会包含问题说明、时间线和环境信息；分享前请检查用户备注。聊天正文和输入框内容不会自动加入。</p>
     </div>
   </dialog>
 

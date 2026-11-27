@@ -365,3 +365,60 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* highlight.js token colors use the app's semantic theme variables. */
+.markdown .hljs { color: var(--text-primary); }
+.markdown .hljs-keyword,
+.markdown .hljs-selector-tag,
+.markdown .hljs-literal,
+.markdown .hljs-type,
+.markdown .hljs-built_in { color: var(--accent); font-weight: 600; }
+.markdown .hljs-string,
+.markdown .hljs-attr,
+.markdown .hljs-template-tag,
+.markdown .hljs-template-variable { color: #16803c; }
+body[data-theme="dark"] .markdown .hljs-string,
+body[data-theme="dark"] .markdown .hljs-attr,
+body[data-theme="dark"] .markdown .hljs-template-tag,
+body[data-theme="dark"] .markdown .hljs-template-variable { color: #8bd49c; }
+.markdown .hljs-comment,
+.markdown .hljs-quote,
+.markdown .hljs-meta { color: var(--text-tertiary); font-style: italic; }
+.markdown .hljs-number,
+.markdown .hljs-symbol,
+.markdown .hljs-bullet { color: #b45309; }
+body[data-theme="dark"] .markdown .hljs-number,
+body[data-theme="dark"] .markdown .hljs-symbol,
+body[data-theme="dark"] .markdown .hljs-bullet { color: #f0bd70; }
+.markdown .hljs-title,
+.markdown .hljs-function,
+.markdown .hljs-section { color: #2563eb; }
+body[data-theme="dark"] .markdown .hljs-title,
+body[data-theme="dark"] .markdown .hljs-function,
+body[data-theme="dark"] .markdown .hljs-section { color: #8ab4ff; }
+.markdown .hljs-deletion { color: #b91c1c; background: rgb(185 28 28 / .1); }
+.markdown .hljs-addition { color: #15803d; background: rgb(21 128 61 / .1); }
+
+
+/* DSA diagnostic capture and export panel. */
+.diagnostics-dialog { width: min(620px, calc(100vw - 24px)); max-height: min(90dvh, 900px); }
+.diagnostics-body { overflow-y: auto; }
+.diagnostics-form { display: grid; gap: 12px; }
+.diagnostics-form .field { margin: 0; }
+.diagnostics-form textarea { min-height: 54px; resize: vertical; }
+.diagnostics-form .primary-button { width: 100%; }
+.diagnostics-export { width: 100%; margin-top: 12px; }
+.diagnostics-status { margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; overflow-wrap: anywhere; }
+.diagnostics-button { display: flex; align-items: center; justify-content: center; gap: 4px; width: auto; min-width: 44px; padding: 0 8px; color: var(--text-secondary); font-size: 12px; }
+.diagnostics-button svg { width: 17px; height: 17px; }
+
+/* Issue-capture experience: compact, action-first, and touch-friendly. */
+.issue-capture-card { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border-normal); border-radius: 16px; background: var(--bg-elevated); }
+.issue-capture-state { display: flex; align-items: flex-start; gap: 9px; line-height: 1.5; }
+.issue-state-dot { flex: 0 0 9px; width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: var(--text-secondary); }
+.issue-event-summary { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.issue-capture-card button { width: 100%; min-height: 44px; }
+.issue-note-field { margin-top: 14px; }
+.issue-note-field textarea { min-height: 72px; resize: vertical; }
+#issueFinish { background: var(--accent, #2563eb); }
+#issueStart[hidden], #issueFinish[hidden] { display: none !important; }

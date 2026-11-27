@@ -1,10 +1,10 @@
 "use strict";
 
 (function exposeResponseRenderer(root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.DSAResponseRenderer = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function createResponseRenderer() {
+})(typeof globalThis !== "undefined" ? globalThis : this, function createResponseRenderer(root) {
   const COPY_ICON = '<svg aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
   const TOKEN_START = "\uE000";
   const TOKEN_END = "\uE001";
@@ -66,6 +66,7 @@
 
     text = escapeHtml(text);
     text = text
+      .replace(/~~([^~\n]+)~~/g, (_, content) => stash(`<del>${content}</del>`))
       .replace(/\*\*\*([^*\n]+)\*\*\*/g, (_, content) => stash(`<strong><em>${content}</em></strong>`))
       .replace(/\*\*([^*\n]+)\*\*/g, (_, content) => stash(`<strong>${content}</strong>`))
       .replace(/__([^_\n]+)__/g, (_, content) => stash(`<strong>${content}</strong>`))
@@ -75,9 +76,25 @@
     return text.replace(/\uE000(\d+)\uE001/g, (_, index) => tokens[Number(index)]);
   }
 
+  const highlighter = root.hljs || (typeof module === "object" && module.exports
+    ? require("./vendor/highlight.min.js")
+    : null);
+
   function renderCodeBlock(code, language = "") {
-    const label = String(language || "code").trim().slice(0, 40) || "code";
-    return `<div class="code-block"><div class="code-header"><span>${escapeHtml(label)}</span><button type="button" class="code-copy">${COPY_ICON}复制</button></div><pre><code>${escapeHtml(code)}</code></pre></div>`;
+    const source = String(code ?? "");
+    const rawLanguage = String(language || "").trim().slice(0, 40);
+    const languageId = rawLanguage.toLowerCase().replace(/[^a-z0-9_+-]/g, "");
+    const label = rawLanguage || "code";
+    let rendered = escapeHtml(source);
+    if (highlighter && languageId && highlighter.getLanguage(languageId)) {
+      try {
+        rendered = highlighter.highlight(source, { language: languageId, ignoreIllegals: true }).value;
+      } catch {
+        rendered = escapeHtml(source);
+      }
+    }
+    const codeClass = languageId ? ` class="hljs language-${escapeHtml(languageId)}"` : "";
+    return `<div class="code-block"><div class="code-header"><span>${escapeHtml(label)}</span><button type="button" class="code-copy">${COPY_ICON}复制</button></div><pre><code${codeClass}>${rendered}</code></pre></div>`;
   }
 
   function splitTableRow(line) {
@@ -164,20 +181,54 @@
     return { html: `${html}</tbody></table></div>`, next: index };
   }
 
+  function renderList(lines, start) {
+    const first = lines[start].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+    if (!first) return null;
+    const baseIndent = first[1].length;
+    const type = /^\d/.test(first[2]) ? "ol" : "ul";
+    const fence = String.fromCharCode(96).repeat(3);
+    let index = start;
+    let html = "<" + type + ">";
+    while (index < lines.length) {
+      const marker = lines[index].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+      if (!marker || marker[1].length !== baseIndent) break;
+      const markerType = /^\d/.test(marker[2]) ? "ol" : "ul";
+      if (markerType !== type) break;
+      const task = marker[3].match(/^\[([ xX])\]\s+(.*)$/);
+      const item = task
+        ? '<input type="checkbox" disabled' + (task[1].toLowerCase() === "x" ? " checked" : "") + ' aria-label="任务状态"> ' + inlineMarkdown(task[2])
+        : inlineMarkdown(marker[3]);
+      html += "<li>" + item;
+      index += 1;
+      while (index < lines.length) {
+        if (!lines[index].trim()) break;
+        const next = lines[index].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+        if (!next || next[1].length <= baseIndent) break;
+        const nested = renderList(lines, index);
+        if (!nested) break;
+        html += nested.html;
+        index = nested.next;
+      }
+      html += "</li>";
+    }
+    html += "</" + type + ">";
+    return { html: html, next: index };
+  }
+
   function renderMarkdown(source) {
     const lines = String(source ?? "").replace(/\r\n?/g, "\n").split("\n");
     const output = [];
     let index = 0;
+    const fence = String.fromCharCode(96).repeat(3);
     while (index < lines.length) {
       const line = lines[index];
       if (!line.trim()) { index += 1; continue; }
 
-      const fence = line.match(/^\s*```([^`\n]*)\s*$/);
-      if (fence) {
-        const language = fence[1].trim();
+      if (line.trimStart().startsWith(fence)) {
+        const language = line.trim().slice(3).trim();
         const code = [];
         index += 1;
-        while (index < lines.length && !/^\s*```\s*$/.test(lines[index])) {
+        while (index < lines.length && lines[index].trim() !== fence) {
           code.push(lines[index]);
           index += 1;
         }
@@ -194,7 +245,7 @@
       const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         const level = heading[1].length;
-        output.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+        output.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">");
         index += 1;
         continue;
       }
@@ -209,31 +260,22 @@
           quote.push(lines[index].replace(/^\s*>\s?/, ""));
           index += 1;
         }
-        output.push(`<blockquote><p>${quote.map(inlineMarkdown).join("<br>")}</p></blockquote>`);
+        output.push("<blockquote>" + renderMarkdown(quote.join("\n")) + "</blockquote>");
         continue;
       }
-      const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
-      const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
-      if (unordered || ordered) {
-        const type = unordered ? "ul" : "ol";
-        const pattern = unordered ? /^\s*[-*+]\s+(.+)$/ : /^\s*\d+[.)]\s+(.+)$/;
-        const items = [];
-        while (index < lines.length) {
-          const item = lines[index].match(pattern);
-          if (!item) break;
-          items.push(`<li>${inlineMarkdown(item[1])}</li>`);
-          index += 1;
-        }
-        output.push(`<${type}>${items.join("")}</${type}>`);
+      const list = renderList(lines, index);
+      if (list) {
+        output.push(list.html);
+        index = list.next;
         continue;
       }
-
       const paragraph = [];
       while (index < lines.length && lines[index].trim() && !isBlockStart(lines, index)) {
         paragraph.push(lines[index]);
         index += 1;
       }
-      if (paragraph.length) output.push(`<p>${paragraph.map(inlineMarkdown).join("<br>")}</p>`);
+      if (paragraph.length) output.push("<p>" + paragraph.map(inlineMarkdown).join("<br>") + "</p>");
+      else index += 1;
     }
     return output.join("");
   }
