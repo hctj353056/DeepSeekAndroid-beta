@@ -176,6 +176,40 @@ class AppTestCase(unittest.TestCase):
             "127.0.0.1:8080", "", "application/x-www-form-urlencoded", "same-origin",
             8080, "127.0.0.1", "POST"))
 
+    def test_plugin_dependency_cycle_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plugin_root = root / "plugins"
+            for plugin_id, requires in (("alpha", ["beta"]), ("beta", ["alpha"])):
+                folder = plugin_root / plugin_id
+                folder.mkdir(parents=True)
+                (folder / "plugin.json").write_text(json.dumps({
+                    "id": plugin_id, "name": plugin_id, "requires": requires,
+                }), encoding="utf-8")
+                (folder / "plugin.py").write_text("def apply(ctx):\\n    return None\\n", encoding="utf-8")
+            manager = PluginManager(root, Context(), root / "data")
+            with self.assertRaisesRegex(RuntimeError, "依赖循环"):
+                manager.enable("alpha")
+            self.assertEqual(manager._enable_stack, [])
+            self.assertFalse(manager.records["alpha"].enabled)
+            self.assertFalse(manager.records["beta"].enabled)
+            manager.shutdown()
+
+    def test_unknown_plugin_dependency_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "plugins" / "alpha"
+            folder.mkdir(parents=True)
+            (folder / "plugin.json").write_text(json.dumps({
+                "id": "alpha", "name": "alpha", "requires": ["missing_plugin"],
+            }), encoding="utf-8")
+            (folder / "plugin.py").write_text("def apply(ctx):\\n    return None\\n", encoding="utf-8")
+            manager = PluginManager(root, Context(), root / "data")
+            with self.assertRaisesRegex(RuntimeError, "依赖不存在"):
+                manager.enable("alpha")
+            self.assertFalse(manager.records["alpha"].enabled)
+            manager.shutdown()
+
     def test_cancellation_is_reported(self) -> None:
         conversation = self.context.store.create()
         stream = self.context.chat.stream(conversation["id"], "请回答", {}, "req-cancel")
