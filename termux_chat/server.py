@@ -55,7 +55,7 @@ def make_handler(context, plugin_manager, web_root: Path):
         return config
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "DeepSeekTermux/0.0.2"
+        server_version = "DeepSeekTermux/0.0.3"
         protocol_version = "HTTP/1.1"
 
         def log_message(self, fmt, *args):
