@@ -122,9 +122,9 @@ test("streaming renderer batches deltas and commits completed blocks incremental
   frames.shift()();
   assert.deepEqual(events, [["preview", "First paragraph continues", true]]);
 
-  stream.append("\\n\\n# Next block");
+  stream.append("\n\n# Next block");
   frames.shift()();
-  assert.deepEqual(events[1], ["stable", "First paragraph continues\\n\\n"]);
+  assert.deepEqual(events[1], ["stable", "First paragraph continues\n\n"]);
   assert.deepEqual(events[2], ["preview", "# Next block", false]);
 
   stream.finish();
@@ -137,8 +137,8 @@ test("streaming renderer batches deltas and commits completed blocks incremental
 
 test("stable boundary detection ignores blank lines inside fenced code", () => {
   const fence = String.fromCharCode(96).repeat(3);
-  const source = fence + "js\\nconst a = 1;\\n\\nconst b = 2;\\n" + fence + "\\n\\nAfter";
+  const source = fence + "js\nconst a = 1;\n\nconst b = 2;\n" + fence + "\n\nAfter";
   const boundary = renderer.findStableBoundary(source);
-  assert.equal(source.slice(0, boundary), fence + "js\\nconst a = 1;\\n\\nconst b = 2;\\n" + fence + "\\n\\n");
+  assert.equal(source.slice(0, boundary), fence + "js\nconst a = 1;\n\nconst b = 2;\n" + fence + "\n\n");
   assert.equal(source.slice(boundary), "After");
 });
