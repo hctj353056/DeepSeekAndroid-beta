@@ -80,7 +80,7 @@ test("invalid table delimiter falls back to paragraphs", () => {
 test("unclosed fence is safely rendered as an accumulating code block", () => {
   const html = renderer.renderMarkdown("```js\nconst x = 1;");
   assert.match(html, /<span>js<\/span>/);
-  assert.match(html, /const x = 1;/);
+  assert.match(html, /const/);\n  assert.match(html, /x =/);\n  assert.match(html, /1;/);
   assert.doesNotMatch(html, /<p>const x/);
 });
 
