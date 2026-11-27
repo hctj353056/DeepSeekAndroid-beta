@@ -355,14 +355,38 @@ async function sendMessage() {
   let renderQueued = false;
   let completed = false;
   let aborted = false;
+  let previewNode = null;
+  const streamRenderer = window.DSAResponseRenderer.createStreamingRenderer({
+    renderStable(source) {
+      previewNode?.remove();
+      previewNode = null;
+      nodes.markdown.insertAdjacentHTML("beforeend", renderMarkdown(source));
+    },
+    renderPreview(text, append) {
+      if (!append && !text) {
+        previewNode?.remove();
+        previewNode = null;
+        return;
+      }
+      if (!previewNode) {
+        previewNode = document.createElement("div");
+        previewNode.className = "streaming-preview";
+        nodes.markdown.appendChild(previewNode);
+      }
+      if (append) previewNode.appendChild(document.createTextNode(text));
+      else previewNode.textContent = text;
+    },
+    onFlush() {
+      nodes.markdown.classList.toggle("typing-cursor", !accumulated.content);
+      scrollBottom();
+    },
+  });
   const scheduleRender = () => {
     if (renderQueued) return;
     renderQueued = true;
     requestAnimationFrame(() => {
       renderQueued = false;
       updateReasoning(nodes, accumulated.reasoning, true);
-      nodes.markdown.innerHTML = renderMarkdown(accumulated.content);
-      nodes.markdown.classList.toggle("typing-cursor", !accumulated.content);
       scrollBottom();
     });
   };
@@ -405,7 +429,7 @@ async function sendMessage() {
         if (!event) continue;
         if (event.type === "delta") {
           accumulated.content += event.text || "";
-          scheduleRender();
+          streamRenderer.append(event.text || "");
         } else if (event.type === "reasoning") {
           accumulated.reasoning += event.text || "";
           scheduleRender();
@@ -438,11 +462,13 @@ async function sendMessage() {
         }
       }
     }
+    streamRenderer.finish();
     updateReasoning(nodes, accumulated.reasoning, false);
     nodes.markdown.classList.remove("typing-cursor");
     nodes.actions.hidden = !accumulated.content;
     if (!completed && !aborted) throw new Error("流式连接在回复完成前中断");
   } catch (error) {
+    streamRenderer.finish();
     aborted = aborted || error.name === "AbortError";
     if (!aborted) {
       nodes.markdown.classList.remove("typing-cursor");

@@ -358,3 +358,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Plain-text tail while a Markdown block is still streaming. */
+.streaming-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
