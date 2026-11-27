@@ -398,3 +398,16 @@ body[data-theme="dark"] .markdown .hljs-function,
 body[data-theme="dark"] .markdown .hljs-section { color: #8ab4ff; }
 .markdown .hljs-deletion { color: #b91c1c; background: rgb(185 28 28 / .1); }
 .markdown .hljs-addition { color: #15803d; background: rgb(21 128 61 / .1); }
+
+
+/* DSA diagnostic capture and export panel. */
+.diagnostics-dialog { width: min(620px, calc(100vw - 24px)); max-height: min(90dvh, 900px); }
+.diagnostics-body { overflow-y: auto; }
+.diagnostics-form { display: grid; gap: 12px; }
+.diagnostics-form .field { margin: 0; }
+.diagnostics-form textarea { min-height: 54px; resize: vertical; }
+.diagnostics-form .primary-button { width: 100%; }
+.diagnostics-export { width: 100%; margin-top: 12px; }
+.diagnostics-status { margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; overflow-wrap: anywhere; }
+.diagnostics-button { display: flex; align-items: center; justify-content: center; gap: 4px; width: auto; min-width: 44px; padding: 0 8px; color: var(--text-secondary); font-size: 12px; }
+.diagnostics-button svg { width: 17px; height: 17px; }

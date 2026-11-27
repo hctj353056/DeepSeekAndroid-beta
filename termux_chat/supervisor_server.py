@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import http.client
 import json
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
 
+from . import __version__
 from .server import MAX_BODY, trusted_api_request
 from .supervisor import RuntimeSupervisor
 
@@ -154,11 +156,54 @@ def make_supervisor_handler(supervisor: RuntimeSupervisor):
                 if connection is not None:
                     connection.close()
 
+        def _diagnostics(self, method: str, path: str) -> None:
+            try:
+                logger = supervisor.diagnostics
+                if method == "GET" and path == "/api/diagnostics/export":
+                    archive = logger.export_zip(__version__)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/zip")
+                    self.send_header("Content-Length", str(len(archive)))
+                    self.send_header("Content-Disposition", 'attachment; filename="dsa-diagnostics.zip"')
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Content-Type-Options", "nosniff")
+                    self.end_headers()
+                    if self.command != "HEAD":
+                        self.wfile.write(archive)
+                    return
+                if method == "POST" and path == "/api/diagnostics/report":
+                    body = self._read_json()
+                    logger.record_action(
+                        str(body.get("action", "")),
+                        str(body.get("observed", "")),
+                        str(body.get("expected", "")),
+                        str(body.get("steps", "")),
+                        str(body.get("note", "")),
+                    )
+                    self._json(201, {"saved": True})
+                    return
+                if method == "POST" and path == "/api/diagnostics/client-event":
+                    body = self._read_json()
+                    event = re.sub(r"[^A-Za-z0-9_.-]", "_", str(body.get("event", "client.event")))[:80]
+                    level = str(body.get("level", "INFO")).upper()
+                    if level not in {"INFO", "WARN", "ERROR"}:
+                        level = "INFO"
+                    logger.record(level, "client." + event, {})
+                    self._json(202, {"saved": True})
+                    return
+                self._json(405, {"error": "诊断接口不支持此方法"})
+            except (ValueError, TypeError, json.JSONDecodeError) as exc:
+                self._json(400, {"error": str(exc)})
+            except Exception as exc:
+                self._json(500, {"error": str(exc)})
+
         def _dispatch(self, method: str) -> None:
             path = urlsplit(self.path).path
             if path.startswith("/api/") and not self._api_allowed(method):
                 return
-            if path.startswith("/api/dsa/"):
+            if path in {"/api/diagnostics/report", "/api/diagnostics/client-event", "/api/diagnostics/export"}:
+                self._diagnostics(method, path)
+            elif path.startswith("/api/dsa/"):
                 self._dsa(method, path)
             else:
                 self._proxy(method)
