@@ -24,7 +24,9 @@ test("escapes code fences and preserves language and copy action", () => {
   const html = renderer.renderMarkdown("```html\n<script>alert(1)</script>\n```");
   assert.match(html, /<span>html<\/span>/);
   assert.match(html, /class="code-copy"/);
-  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /&lt;/);
+  assert.match(html, /<span class="hljs-name">script<\/span>/);
+  assert.match(html, /&gt;/);
   assert.match(html, /alert/);
   assert.match(html, /&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>alert/);
