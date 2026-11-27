@@ -8,7 +8,7 @@
 
 ## 版本说明
 
-- **V0.0.4**：修复手机插件弹窗滚动；支持从项目目录读取 API Key 与主体系统提示词文件。
+- **V0.0.4**：修复手机插件弹窗滚动；首次启动自动创建 API Key 文件和默认灵魂架构；支持从本地文件加载主体提示词；对 TLS EOF 连接错误提供重试与诊断。
 - **V0.0.3**：加强插件依赖校验、依赖循环检测与生命周期测试；继续使用 `main.py` 启动。
 - **V0.0.2**：引入插件化实现、服务端工具调用历史保存、本地 API 来源校验和自动化测试。
 - **V0.0.1**：保留的 `deepseek_mobile.py` 单文件版本，便于回溯和对比。
@@ -60,7 +60,7 @@ http://127.0.0.1:8080
 python main.py --port 8081 --open
 ```
 
-首次真实对话前，在「侧边栏 → 设置」中选择 **DeepSeek API** 并填写 API Key。默认接口为 `https://api.deepseek.com`，默认模型为 `deepseek-flash`。也可以先切换为 **本地演示（无需 Key）** 验证完整流程。
+首次启动时，程序会自动在项目根目录创建 `001.key`，并创建 `灵魂架构/灵魂架构.md`，其中包含默认主体架构。你只需用文本编辑器把 API Key 填入 `001.key`；默认系统提示词会自动读取灵魂架构文件并注入模型请求。默认接口为 `https://api.deepseek.com`，默认模型为 `deepseek-flash`。也可以先切换为 **本地演示（无需 Key）** 验证完整流程。
 
 使用环境变量提供 Key：
 
@@ -68,7 +68,7 @@ python main.py --port 8081 --open
 DEEPSEEK_API_KEY="你的 Key" python main.py
 ```
 
-环境变量优先于本地文件中的 Key。`GET /api/config` 不会返回 Key；保存到文件时位于 `data/settings.json`，权限设为 `0600`。
+环境变量优先于 `001.key`。网页设置中输入的 Key 也会写入项目根目录的 `001.key`；`data/settings.json` 不再保存 API Key。`GET /api/config` 不会返回 Key。
 
 ## 插件架构
 
@@ -232,26 +232,20 @@ python deepseek_mobile.py --help
 ```
 
 
-## 从项目目录加载主体配置（V0.0.4）
+## 项目目录中的主体配置（V0.0.4）
 
-可以不在网页设置中粘贴系统提示词或 API Key。启动时设置插件会优先读取项目根目录下的本地文件：
+首次启动时自动生成以下文件，无需手动创建：
 
 ```text
 DeepSeekAndroid-beta/
-├── 001.key                 # DeepSeek API Key，纯文本，一行即可
+├── 001.key                 # API Key 文件，初始为空
 └── 灵魂架构/
-    └── 灵魂架构.md          # 系统提示词，支持 Markdown
+    └── 灵魂架构.md          # 自动写入默认主体架构，可自行修改
 ```
 
-在项目根目录执行（已有文件时不要覆盖）：
+默认灵魂架构会自动作为系统提示词注入模型请求。文件内容只在后端读取，不会通过本地网页 API 回传。修改文件并重启服务即可生效。网页设置中输入的 Key 也会写入 `001.key`；环境变量 `DEEPSEEK_API_KEY` 优先级最高。
 
-```bash
-mkdir -p "灵魂架构"
-touch "001.key"
-touch "灵魂架构/灵魂架构.md"
-```
 
-用文本编辑器填写 `001.key` 和 `灵魂架构/灵魂架构.md`。提示词文件存在且非空时，它将覆盖网页设置中的系统提示词；提示词正文只在后端读取，不会通过本地网页 API 回传。Key 文件存在且非空时优先使用，网页设置中的 Key 不会覆盖它。环境变量 `DEEPSEEK_API_KEY` 优先级最高。
 
 也可以通过环境变量指定其他文件路径：
 
@@ -264,3 +258,16 @@ python main.py --open
 文件内容修改后，重启服务即可重新加载。项目根目录的 `001.key` 与 `灵魂架构/` 已加入 `.gitignore`，不会被 Git 提交；分享或发布项目时请确认没有把个人提示词或 Key 打包进去。
 
 **安全提醒：** 若项目位于 Android 共享存储 `/storage/emulated/0/`，Key 文件是明文，其他拥有共享存储访问权限的应用可能读取。更安全的做法是将 Key 放在 Termux 私有目录（例如 `$HOME/.config/deepseek/001.key`），并通过 `DEEPSEEK_API_KEY_FILE` 指向它。共享存储上的文件权限不能可靠地限制其他应用读取。
+
+
+## TLS EOF 连接错误排查
+
+如果出现 `UNEXPECTED_EOF_WHILE_READING`，表示 TLS 连接在读取期间被提前关闭。它通常是网络、VPN、代理或 API 地址连接问题，不等同于 Key 错误。V0.0.4 会在建立连接时对短暂中断重试，并显示更明确的提示。
+
+可先检查设置中的 Base URL（默认 `https://api.deepseek.com`），再尝试切换网络或 VPN。若持续发生，可在 Termux 中执行：
+
+```bash
+curl -Iv https://api.deepseek.com
+```
+
+此命令只检查 HTTPS/TLS 连接，不会验证模型请求或 API Key。请不要把真实 API Key 贴到公开日志或截图中。
