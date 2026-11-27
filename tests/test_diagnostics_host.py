@@ -6,6 +6,7 @@ import threading
 import unittest
 import urllib.request
 import zipfile
+from urllib.error import HTTPError
 from io import BytesIO
 from pathlib import Path
 
@@ -38,7 +39,12 @@ class StableHostDiagnosticsTests(unittest.TestCase):
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 )
-                with urllib.request.urlopen(report, timeout=3) as response:
+                try:
+                    response_context = urllib.request.urlopen(report, timeout=3)
+                except HTTPError as error:
+                    detail = error.read().decode("utf-8", errors="replace")
+                    self.fail(f"diagnostics report returned {error.code}: {detail}")
+                with response_context as response:
                     self.assertEqual(response.status, 201)
                     self.assertTrue(json.loads(response.read())["saved"])
 
