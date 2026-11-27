@@ -170,21 +170,14 @@
     if (!first) return null;
     const baseIndent = first[1].length;
     const type = /^\d/.test(first[2]) ? "ol" : "ul";
+    const fence = String.fromCharCode(96).repeat(3);
     let index = start;
     let html = "<" + type + ">";
     while (index < lines.length) {
       const marker = lines[index].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
-      if (!marker) break;
-      const indent = marker[1].length;
+      if (!marker || marker[1].length !== baseIndent) break;
       const markerType = /^\d/.test(marker[2]) ? "ol" : "ul";
-      if (indent < baseIndent || (indent === baseIndent && markerType !== type)) break;
-      if (indent > baseIndent) {
-        const nested = renderList(lines, index);
-        if (!nested) break;
-        html += nested.html;
-        index = nested.next;
-        continue;
-      }
+      if (markerType !== type) break;
       const task = marker[3].match(/^\[([ xX])\]\s+(.*)$/);
       const item = task
         ? '<input type="checkbox" disabled' + (task[1].toLowerCase() === "x" ? " checked" : "") + ' aria-label="任务状态"> ' + inlineMarkdown(task[2])
@@ -192,24 +185,39 @@
       html += "<li>" + item;
       index += 1;
       while (index < lines.length) {
+        if (!lines[index].trim()) break;
         const next = lines[index].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
-        if (!next || next[1].length <      if (/^\s*>\s?/.test(line)) {
-        const quote = [];
-        while (index < lines.length && /^\s*>\s?/.test(lines[index])) {
-          quote.push(lines[index].replace(/^\s*>\s?/, ""));
+        if (!next || next[1].length <= baseIndent) break;
+        const nested = renderList(lines, index);
+        if (!nested) break;
+        html += nested.html;
+        index = nested.next;
+      }
+      html += "</li>";
+    }
+    html += "</" + type + ">";
+    return { html: html, next: index };
+  }
+
+  function renderMarkdown(source) {
+    const lines = String(source ?? "").replace(/\r\n?/g, "\n").split("\n");
+    const output = [];
+    let index = 0;
+    const fence = String.fromCharCode(96).repeat(3);
+    while (index < lines.length) {
+      const line = lines[index];
+      if (!line.trim()) { index += 1; continue; }
+
+      if (line.trimStart().startsWith(fence)) {
+        const language = line.trim().slice(3).trim();
+        const code = [];
+        index += 1;
+        while (index < lines.length && lines[index].trim() !== fence) {
+          code.push(lines[index]);
           index += 1;
         }
-        output.push("<blockquote>" + renderMarkdown(quote.join("\n")) + "</blockquote>");
-        continue;
-      }
-      const list = renderList(lines, index);
-      if (list) {
-        output.push(list.html);
-        index = list.next;
-        continue;
-      }
-
-uage));
+        if (index < lines.length) index += 1;
+        output.push(renderCodeBlock(code.join("\n"), language));
         continue;
       }
       if (isTable(lines, index)) {
@@ -221,7 +229,7 @@ uage));
       const heading = line.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         const level = heading[1].length;
-        output.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+        output.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">");
         index += 1;
         continue;
       }
@@ -236,31 +244,22 @@ uage));
           quote.push(lines[index].replace(/^\s*>\s?/, ""));
           index += 1;
         }
-        output.push(`<blockquote><p>${quote.map(inlineMarkdown).join("<br>")}</p></blockquote>`);
+        output.push("<blockquote>" + renderMarkdown(quote.join("\n")) + "</blockquote>");
         continue;
       }
-      const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
-      const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
-      if (unordered || ordered) {
-        const type = unordered ? "ul" : "ol";
-        const pattern = unordered ? /^\s*[-*+]\s+(.+)$/ : /^\s*\d+[.)]\s+(.+)$/;
-        const items = [];
-        while (index < lines.length) {
-          const item = lines[index].match(pattern);
-          if (!item) break;
-          items.push(`<li>${inlineMarkdown(item[1])}</li>`);
-          index += 1;
-        }
-        output.push(`<${type}>${items.join("")}</${type}>`);
+      const list = renderList(lines, index);
+      if (list) {
+        output.push(list.html);
+        index = list.next;
         continue;
       }
-
       const paragraph = [];
       while (index < lines.length && lines[index].trim() && !isBlockStart(lines, index)) {
         paragraph.push(lines[index]);
         index += 1;
       }
-      if (paragraph.length) output.push(`<p>${paragraph.map(inlineMarkdown).join("<br>")}</p>`);
+      if (paragraph.length) output.push("<p>" + paragraph.map(inlineMarkdown).join("<br>") + "</p>");
+      else index += 1;
     }
     return output.join("");
   }
