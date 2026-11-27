@@ -221,68 +221,8 @@ async function deleteConversation(conversation) {
   toast("会话已删除");
 }
 
-function inlineMarkdown(source) {
-  let text = escapeHtml(source);
-  const inlineCodes = [];
-  text = text.replace(/`([^`\n]+)`/g, (_, code) => {
-    const index = inlineCodes.push(`<code>${code}</code>`) - 1;
-    return `@@INLINE${index}@@`;
-  });
-  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) =>
-    `<a href="${url}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`);
-  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  text = text.replace(/@@INLINE(\d+)@@/g, (_, index) => inlineCodes[Number(index)]);
-  return text;
-}
-
 function renderMarkdown(source) {
-  const codeBlocks = [];
-  const prepared = String(source || "").replace(/```([^\n`]*)\n?([\s\S]*?)```/g, (_, language, code) => {
-    const index = codeBlocks.push({ language: language.trim(), code: code.replace(/\n$/, "") }) - 1;
-    return `\n@@CODEBLOCK${index}@@\n`;
-  });
-  const lines = prepared.split("\n");
-  const output = [];
-  let paragraph = [];
-  let listType = "";
-  const flushParagraph = () => {
-    if (paragraph.length) output.push(`<p>${paragraph.map(inlineMarkdown).join("<br>")}</p>`);
-    paragraph = [];
-  };
-  const closeList = () => {
-    if (listType) output.push(`</${listType}>`);
-    listType = "";
-  };
-  for (const line of lines) {
-    const codeMatch = line.trim().match(/^@@CODEBLOCK(\d+)@@$/);
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
-    const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
-    const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
-    if (codeMatch) {
-      flushParagraph(); closeList();
-      const block = codeBlocks[Number(codeMatch[1])];
-      output.push(`<div class="code-block"><div class="code-header"><span>${escapeHtml(block.language || "code")}</span><button type="button" class="code-copy">${icon("copy")}复制</button></div><pre><code>${escapeHtml(block.code)}</code></pre></div>`);
-    } else if (heading) {
-      flushParagraph(); closeList();
-      const level = heading[1].length;
-      output.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
-    } else if (unordered || ordered) {
-      flushParagraph();
-      const desired = unordered ? "ul" : "ol";
-      if (listType !== desired) { closeList(); listType = desired; output.push(`<${listType}>`); }
-      output.push(`<li>${inlineMarkdown((unordered || ordered)[1])}</li>`);
-    } else if (/^\s*>\s?/.test(line)) {
-      flushParagraph(); closeList();
-      output.push(`<blockquote>${inlineMarkdown(line.replace(/^\s*>\s?/, ""))}</blockquote>`);
-    } else if (!line.trim()) {
-      flushParagraph(); closeList();
-    } else {
-      closeList();
-      paragraph.push(line);
-    }
-  }
-  flushParagraph(); closeList();
-  return output.join("");
+  return window.DSAResponseRenderer.renderMarkdown(source);
 }
 
 function createUserMessage(message) {
