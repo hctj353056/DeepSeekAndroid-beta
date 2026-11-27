@@ -1,10 +1,10 @@
 "use strict";
 
 (function exposeResponseRenderer(root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.DSAResponseRenderer = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function createResponseRenderer() {
+})(typeof globalThis !== "undefined" ? globalThis : this, function createResponseRenderer(root) {
   const COPY_ICON = '<svg aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
   const TOKEN_START = "\uE000";
   const TOKEN_END = "\uE001";
