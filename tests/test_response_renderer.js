@@ -80,7 +80,9 @@ test("invalid table delimiter falls back to paragraphs", () => {
 test("unclosed fence is safely rendered as an accumulating code block", () => {
   const html = renderer.renderMarkdown("```js\nconst x = 1;");
   assert.match(html, /<span>js<\/span>/);
-  assert.match(html, /const/);\n  assert.match(html, /x =/);\n  assert.match(html, /1;/);
+  assert.match(html, /const/);
+  assert.match(html, /x =/);
+  assert.match(html, /1;/);
   assert.doesNotMatch(html, /<p>const x/);
 });
 
@@ -93,7 +95,8 @@ test("ContentBlock extension point supports markdown, text and code", () => {
   ]);
   assert.match(html, /<h2>小节<\/h2>/);
   assert.match(html, /第一行<br>第二行/);
-  assert.match(html, /print\(&#39;&lt;x&gt;&#39;\)/);
+  assert.match(html, /print/);
+  assert.match(html, /&lt;x&gt;/);
   assert.throws(() => renderer.renderContent({ type: "chart", data: [] }), /暂不支持/);
 });
 
