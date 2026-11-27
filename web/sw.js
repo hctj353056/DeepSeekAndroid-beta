@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "deepseek-termux-v0.0.6-response-renderer";
+const CACHE = "deepseek-termux-v0.0.6-streaming-renderer";
 const ASSETS = ["/styles.css", "/response-renderer.js", "/app.js", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
