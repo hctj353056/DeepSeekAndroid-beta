@@ -28,9 +28,10 @@ class Settings:
         self.data_dir = Path(data_dir)
         self.root_dir = Path(root_dir).resolve()
         self.file = self.data_dir / "settings.json"
-        self.api_key_file = Path(os.environ.get(
+        key_path = Path(os.environ.get(
             "DEEPSEEK_API_KEY_FILE", str(self.root_dir / "001.key")
         )).expanduser()
+        self.api_key_file = key_path if key_path.is_absolute() else (self.root_dir / key_path).resolve()
         prompt_path = Path(os.environ.get(
             "DEEPSEEK_SYSTEM_PROMPT_FILE",
             str(self.root_dir / "灵魂架构" / "灵魂架构.md"),
@@ -83,8 +84,10 @@ class Settings:
     def public(self) -> dict:
         with self._lock:
             result = {key: value for key, value in self._values.items() if key != "api_key"}
-            result["system_prompt"] = self.get("system_prompt")
-            result["system_prompt_from_file"] = bool(self._file_text(self.system_prompt_file))
+            prompt_from_file = bool(self._file_text(self.system_prompt_file))
+            # 主体提示词文件只在后端读取，不通过本地 API 暴露文件内容。
+            result["system_prompt"] = "" if prompt_from_file else self._values["system_prompt"]
+            result["system_prompt_from_file"] = prompt_from_file
             result["system_prompt_file"] = str(self.system_prompt_file)
             result["api_key_set"] = bool(self.get("api_key"))
             result["api_key_from_env"] = bool(os.environ.get("DEEPSEEK_API_KEY"))
