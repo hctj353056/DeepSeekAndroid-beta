@@ -1,13 +1,14 @@
 # DeepSeekAndroid-beta
 
-当前版本：**DeepSeekAndroid-betaV0.0.5**
+当前版本：**DeepSeekAndroid-betaV0.0.6**
 
-面向 Android / Termux 的非官方 DeepSeek 文本聊天客户端。Python 稳定宿主监听本机回环地址，手机浏览器渲染竖屏界面；V0.0.5 将智能体主体拆分为可交替激活的 A／B 独立进程，支持不可变版本快照、候选检查、原子切换与失败回滚。
+面向 Android / Termux 的非官方 DeepSeek 文本聊天客户端。Python 稳定宿主监听本机回环地址，手机浏览器渲染竖屏界面；V0.0.5 建立 A／B 主体热切换，V0.0.6 新增独立、安全的回答渲染模块，完善 Markdown、GFM 表格和移动端展示。
 
 > 这不是原生 APK。运行时零第三方 Python 依赖，不需要 pip、Node.js 或前端构建，建议 Python 3.10+。
 
 ## 版本说明
 
+- **V0.0.6**：新增独立回答渲染模块，支持安全 Markdown、斜体、水平分隔线、GFM 表格、代码复制和窄屏容器滚动；预留 ContentBlock 扩展点，并加入 JavaScript 渲染测试。
 - **V0.0.5**：引入稳定宿主、A／B 独立智能体主体、不可变历史版本、隔离候选检查、激活与回滚；静态资源改为网络优先，避免旧 Service Worker 缓存遮蔽修复。
 - **V0.0.4**：修复手机插件弹窗滚动；首次启动自动创建 API Key 文件和默认灵魂架构；支持从本地文件加载主体提示词；对 TLS EOF 连接错误提供重试与诊断。
 - **V0.0.3**：加强插件依赖校验、依赖循环检测与生命周期测试；继续使用 `main.py` 启动。
@@ -38,7 +39,7 @@ V0.0.2 及后续版本共用项目下的 `data/`；保留的 V0.0.1 使用 `~/.d
 
 V0.0.2 聚焦纯文本对话，未纳入附件、语音、消息分支、历史 ZIP 导入导出、KaTeX 和 Mermaid。
 
-## 在 Termux 启动 V0.0.5
+## 在 Termux 启动 V0.0.6
 
 获取仓库并进入目录：
 
@@ -70,6 +71,16 @@ DEEPSEEK_API_KEY="你的 Key" python main.py
 ```
 
 环境变量优先于 `001.key`。网页设置中输入的 Key 也会写入项目根目录的 `001.key`；`data/settings.json` 不再保存 API Key。`GET /api/config` 不会返回 Key。
+
+## 回答渲染（V0.0.6）
+
+`web/response-renderer.js` 是独立的回答渲染模块，由 `web/app.js` 的消息入口调用，不改变模型适配器、Agent、插件或 A/B 主体协议。运行时无第三方依赖、无外部 CDN、无构建步骤。
+
+当前支持：1—6 级标题、段落、无序与有序列表、引用、HTTP／HTTPS 链接、粗体、斜体、粗斜体、行内代码、代码围栏、水平分隔线及 GFM 风格表格。代码保留语言标签与复制按钮，代码块和表格分别在自身容器内横向滚动。未闭合代码围栏按仍在累积的代码处理，不支持或无法识别的语法回退为安全文本。
+
+安全边界：所有模型文本默认转义，不执行原始 HTML、脚本或事件属性；链接仅允许 HTTP／HTTPS，新窗口链接带 `noopener noreferrer nofollow`。行内代码不会被强调或链接规则二次改写。
+
+预留的 `renderContent()` 目前仅接受 `markdown`、`text`、`code` 三类 ContentBlock，其他类型明确报错。**本期不包含图表、流程图、交互卡片、完整 ResponseSchema 或增量 DOM 协议**；这些保留给后续阶段。
 
 ## DSA A／B 主体热切换（V0.0.5）
 
@@ -128,7 +139,8 @@ DeepSeekAndroid-beta/
 │   ├── web_search/            # 服务端搜索工具
 │   └── url_reader/            # 服务端链接阅读工具
 ├── web/                       # 无构建步骤的 HTML / CSS / JS
-└── tests/                     # 标准库 unittest
+│   └── response-renderer.js   # 独立安全回答渲染模块
+└── tests/                     # Python unittest 与 Node.js 渲染测试
 ```
 
 ### 新增工具插件
@@ -238,11 +250,12 @@ V0.0.2 及后续版本的数据位置：
 
 ```bash
 python -m unittest discover -s tests -v
+node --test tests/test_response_renderer.js
 ```
 
-测试共 22 项，覆盖插件注册撤销、密钥回显保护、演示对话持久化、模型—工具—模型闭环、历史重建、服务端工具调用签名往返、本地 API 来源校验和取消，以及 DSA 源码代际隔离、候选失败保护、激活、回滚、宿主重启恢复和代理 SSE。
+Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 10 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。现有 CI 继续在 Python 3.10／3.12 上执行；10 项 Node.js 渲染测试已在本地 Node 20 环境验证，本期未修改 CI 工作流。
 
-本版本已在 Linux／Chromium 中检查 375／768／1024／1440px 布局、深色主题、主体弹窗与插件弹窗滚动，并实际执行候选准备、激活和回滚；浏览器控制台无错误。测试未使用真实 API Key，尚未在真实 Termux 设备上执行；实际回答仍需有效 Key 和网络连接。
+本版本已在 Linux／Chromium 中通过真实 SSE 检查长回答、表格、长代码、代码复制、深浅主题及 375／768／1024px 布局；表格与代码只在各自容器内横向滚动，用户上翻后不会被流式输出强制拉回，控制台无错误。测试未使用真实 API Key，尚未在真实 Termux 设备上执行；实际回答仍需有效 Key 和网络连接。
 
 参考接口：
 
