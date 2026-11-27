@@ -194,7 +194,8 @@ def make_handler(context, plugin_manager, web_root: Path):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
-            self.wfile.write(body)
+            if self.command != "HEAD":
+                self.wfile.write(body)
 
         def _chat(self) -> None:
             body = self._read_json()
