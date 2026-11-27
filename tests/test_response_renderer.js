@@ -104,3 +104,41 @@ test("escaped punctuation and private token text cannot collide with renderer in
   assert.match(html, /\*不是斜体\*/);
   assert.doesNotMatch(html, /undefined/);
 });
+
+
+test("streaming renderer batches deltas and commits completed blocks incrementally", () => {
+  const events = [];
+  const frames = [];
+  const stream = renderer.createStreamingRenderer({
+    renderStable: (source) => events.push(["stable", source]),
+    renderPreview: (text, append) => events.push(["preview", text, append]),
+    schedule: (callback) => { frames.push(callback); return callback; },
+    cancel: () => {},
+  });
+
+  stream.append("First paragraph");
+  stream.append(" continues");
+  assert.equal(frames.length, 1, "multiple chunks should share one animation-frame flush");
+  frames.shift()();
+  assert.deepEqual(events, [["preview", "First paragraph continues", true]]);
+
+  stream.append("\\n\\n# Next block");
+  frames.shift()();
+  assert.deepEqual(events[1], ["stable", "First paragraph continues\\n\\n"]);
+  assert.deepEqual(events[2], ["preview", "# Next block", false]);
+
+  stream.finish();
+  assert.deepEqual(events[3], ["stable", "# Next block"]);
+  assert.deepEqual(events[4], ["preview", "", false]);
+  assert.equal(stream.finished, true);
+  assert.throws(() => stream.append("late"), /已结束/);
+});
+
+
+test("stable boundary detection ignores blank lines inside fenced code", () => {
+  const fence = String.fromCharCode(96).repeat(3);
+  const source = fence + "js\\nconst a = 1;\\n\\nconst b = 2;\\n" + fence + "\\n\\nAfter";
+  const boundary = renderer.findStableBoundary(source);
+  assert.equal(source.slice(0, boundary), fence + "js\\nconst a = 1;\\n\\nconst b = 2;\\n" + fence + "\\n\\n");
+  assert.equal(source.slice(boundary), "After");
+});
