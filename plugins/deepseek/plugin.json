@@ -1,0 +1,8 @@
+{
+  "id": "deepseek",
+  "name": "DeepSeek 模型适配器",
+  "version": "1.0.0",
+  "description": "通过 OpenAI 兼容 Chat Completions 接口提供流式回复、思考与工具调用。",
+  "requires": ["settings"],
+  "provides": ["models:deepseek"]
+}

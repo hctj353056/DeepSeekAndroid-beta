@@ -1,0 +1,7 @@
+{
+  "id": "demo",
+  "name": "本地演示模型",
+  "version": "1.0.0",
+  "description": "无需网络和 API Key，用于验证界面、流式输出与会话存储。",
+  "provides": ["models:demo"]
+}

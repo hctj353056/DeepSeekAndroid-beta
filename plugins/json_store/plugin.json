@@ -1,0 +1,8 @@
+{
+  "id": "json_store",
+  "name": "JSON 会话存储",
+  "version": "1.0.0",
+  "description": "以原子写入的 JSON 文件保存本地会话，可替换为其他存储插件。",
+  "provides": ["store"],
+  "core": true
+}

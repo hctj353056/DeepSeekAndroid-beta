@@ -1,0 +1,8 @@
+{
+  "id": "settings",
+  "name": "本地设置",
+  "version": "1.0.0",
+  "description": "保存模型、接口与推理偏好；API Key 不会回传到前端。",
+  "provides": ["settings"],
+  "core": true
+}
