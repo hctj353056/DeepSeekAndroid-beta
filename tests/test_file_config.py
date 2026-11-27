@@ -19,7 +19,7 @@ class FileBasedSettingsTests(unittest.TestCase):
             prompt_file.parent.mkdir(parents=True)
             prompt_file.write_text("# 主体\n保持独立判断。", encoding="utf-8")
 
-            with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "", "DEEPSEEK_API_KEY_FILE": "", "DEEPSEEK_SYSTEM_PROMPT_FILE": ""}):
+            with patch.dict("os.environ", {}, clear=True):
                 settings = Settings(data, root)
 
             self.assertEqual(settings.get("api_key"), "test-api-secret")
