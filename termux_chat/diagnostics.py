@@ -154,7 +154,7 @@ class DiagnosticLogger:
             "python": platform.python_version(),
             "platform": platform.platform()[:300],
             "log_files": [],
-            "included_data": "diagnostic JSONL only; conversation messages and API credentials are excluded",
+            "included_data": "issue-specific diagnostic records and environment metadata; conversation messages and API credentials are excluded",
         }
         with self._lock, zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             if incident_id:
