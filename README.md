@@ -76,7 +76,7 @@ DEEPSEEK_API_KEY="你的 Key" python main.py
 
 `web/response-renderer.js` 是独立的回答渲染模块，由 `web/app.js` 的消息入口调用，不改变模型适配器、Agent、插件或 A/B 主体协议。运行时无第三方依赖、无外部 CDN、无构建步骤。
 
-当前支持：1—6 级标题、段落、无序与有序列表、引用、HTTP／HTTPS 链接、粗体、斜体、粗斜体、行内代码、代码围栏、水平分隔线及 GFM 风格表格。代码保留语言标签与复制按钮，代码块和表格分别在自身容器内横向滚动。未闭合代码围栏按仍在累积的代码处理，不支持或无法识别的语法回退为安全文本。
+当前实现：1—6 级标题、段落、无序与有序列表、嵌套列表、嵌套引用、任务清单（禁用复选框）、GFM 删除线、HTTP／HTTPS 链接、粗体、斜体、粗斜体、行内代码、代码围栏、水平分隔线及 GFM 风格表格。代码保留语言标签与复制按钮，代码块和表格分别在自身容器内横向滚动。未闭合代码围栏按仍在累积的代码处理，不支持或无法识别的语法回退为安全文本。
 
 安全边界：所有模型文本默认转义，不执行原始 HTML、脚本或事件属性；链接仅允许 HTTP／HTTPS，新窗口链接带 `noopener noreferrer nofollow`。行内代码不会被强调或链接规则二次改写。
 
@@ -253,7 +253,7 @@ python -m unittest discover -s tests -v
 node --test tests/test_response_renderer.js
 ```
 
-Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 12 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 12 项回答渲染测试；PR 目标分支支持 main 与 release/**。
+Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块现有 15 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏、ContentBlock 回退、流式增量渲染、删除线、任务清单及嵌套结构。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 15 项回答渲染测试；PR 检查支持 main、release/**、feature/** 与 fix/** 分支。
 
 本版本已在 Linux／Chromium 中通过真实 SSE 检查长回答、表格、长代码、代码复制、深浅主题及 375／768／1024px 布局；表格与代码只在各自容器内横向滚动，用户上翻后不会被流式输出强制拉回，控制台无错误。测试未使用真实 API Key，尚未在真实 Termux 设备上执行；实际回答仍需有效 Key 和网络连接。
 
