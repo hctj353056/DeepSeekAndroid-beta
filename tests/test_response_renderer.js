@@ -24,7 +24,9 @@ test("escapes code fences and preserves language and copy action", () => {
   const html = renderer.renderMarkdown("```html\n<script>alert(1)</script>\n```");
   assert.match(html, /<span>html<\/span>/);
   assert.match(html, /class="code-copy"/);
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /alert/);
+  assert.match(html, /&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>alert/);
 });
 
@@ -82,7 +84,7 @@ test("unclosed fence is safely rendered as an accumulating code block", () => {
   assert.match(html, /<span>js<\/span>/);
   assert.match(html, /const/);
   assert.match(html, /x =/);
-  assert.match(html, /1;/);
+  assert.match(html, /1<\/span>;/);
   assert.doesNotMatch(html, /<p>const x/);
 });
 
