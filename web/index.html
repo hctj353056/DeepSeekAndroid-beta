@@ -64,7 +64,7 @@
       <header class="topbar">
         <button id="menuButton" class="icon-button mobile-only" aria-label="打开侧边栏"><svg><use href="#i-menu"/></svg></button>
         <h1 id="conversationTitle" class="conversation-title">新对话</h1>
-        <button id="diagnosticsButton" class="icon-button diagnostics-button" aria-label="诊断日志" title="诊断日志"><svg><use href="#i-copy"/></svg><span>日志</span></button>
+        <button id="diagnosticsButton" class="icon-button diagnostics-button" aria-label="问题记录" title="问题记录"><svg><use href="#i-copy"/></svg><span>问题</span></button>
         <button id="newChatTop" class="icon-button" aria-label="新对话"><svg><use href="#i-plus"/></svg></button>
       </header>
 
@@ -154,20 +154,18 @@
   </dialog>
 
   <dialog id="diagnosticsDialog" class="dialog diagnostics-dialog" aria-labelledby="diagnosticsTitle">
-    <header class="dialog-header"><h2 id="diagnosticsTitle">诊断日志</h2><button type="button" class="icon-button" data-close="diagnosticsDialog" aria-label="关闭诊断日志"><svg><use href="#i-close"/></svg></button></header>
+    <header class="dialog-header"><h2 id="diagnosticsTitle">问题现场</h2><button type="button" class="icon-button" data-close="diagnosticsDialog" aria-label="关闭问题记录"><svg><use href="#i-close"/></svg></button></header>
     <div class="dialog-body diagnostics-body">
-      <p class="dialog-intro">记录你执行的操作、看到的现象和预期结果。程序错误会自动记录；聊天正文不会自动加入日志。</p>
-      <form id="diagnosticsForm" class="diagnostics-form">
-        <label class="field"><span>操作步骤</span><textarea name="action" rows="2" maxlength="500" required placeholder="例如：打开插件页面并向上滑动"></textarea></label>
-        <label class="field"><span>实际现象</span><textarea name="observed" rows="3" maxlength="1500" required placeholder="例如：页面没有滚动"></textarea></label>
-        <label class="field"><span>预期结果</span><textarea name="expected" rows="2" maxlength="1000" placeholder="例如：页面内容可以上下滚动"></textarea></label>
-        <label class="field"><span>复现步骤（可选）</span><textarea name="steps" rows="3" maxlength="1500" placeholder="按顺序描述如何复现"></textarea></label>
-        <label class="field"><span>补充说明（可选）</span><textarea name="note" rows="2" maxlength="1000" placeholder="设备环境、截图说明等"></textarea></label>
-        <button type="submit" class="primary-button">保存测试记录</button>
-      </form>
-      <button id="diagnosticsExport" type="button" class="secondary-button diagnostics-export">导出诊断包（ZIP）</button>
-      <p id="diagnosticsStatus" class="diagnostics-status" role="status" aria-live="polite">导出包只包含诊断日志和环境信息，不包含会话历史。</p>
-      <p class="security-note">发送前请自行检查诊断包。日志会对常见凭据字段进行脱敏，但不应包含你不希望分享的私人信息。</p>
+      <p class="dialog-intro">发现异常时点击「标记问题」。系统会把此前约 3 分钟内的操作和程序事件保存在本机，并继续记录，帮助 AI 还原现场。不会自动记录聊天正文或输入内容。</p>
+      <section class="issue-capture-card">
+        <div class="issue-capture-state"><span class="issue-state-dot"></span><strong id="diagnosticsStatus" role="status" aria-live="polite">当前没有正在记录的问题</strong></div>
+        <p class="issue-event-summary">现场事件：<strong id="issueEventCount">0</strong> 条（最多保留 300 条）</p>
+        <button id="issueStart" type="button" class="primary-button">标记问题 / 开始记录</button>
+        <button id="issueFinish" type="button" class="primary-button" hidden>结束并保存现场</button>
+      </section>
+      <label class="field issue-note-field"><span>补充一句（可选）</span><textarea id="issueNote" rows="3" maxlength="2000" placeholder="例如：回答里的公式没有渲染，显示成原始代码"></textarea></label>
+      <button id="diagnosticsExport" type="button" class="secondary-button diagnostics-export">导出问题报告（ZIP）</button>
+      <p class="security-note">记录只保存在本机。导出后会包含问题说明、时间线和环境信息；分享前请检查用户备注。聊天正文和输入框内容不会自动加入。</p>
     </div>
   </dialog>
 
