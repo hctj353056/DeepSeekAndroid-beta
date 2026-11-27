@@ -41,6 +41,7 @@ class PluginManager:
         self._states: dict[str, bool] = {}
         self._lock = threading.RLock()
         self._load_generation = 0
+        self._enable_stack: list[str] = []
         self.discover()
         self._states = self._read_states()
 
@@ -114,15 +115,26 @@ class PluginManager:
                 raise RuntimeError(f"未发现插件：{plugin_id}")
             if record.enabled:
                 return
+            if plugin_id in self._enable_stack:
+                cycle = self._enable_stack[self._enable_stack.index(plugin_id):] + [plugin_id]
+                raise RuntimeError("检测到插件依赖循环：" + " -> ".join(cycle))
             if record.error and record.module is None and not (record.path / "plugin.json").is_file():
                 raise RuntimeError(record.error)
 
-            for dependency in record.meta.get("requires", []):
-                self.enable(dependency, persist=False)
-                record.dependents.add(dependency)
+            requires = record.meta.get("requires", [])
+            if not isinstance(requires, list) or any(not isinstance(item, str) or not item.strip() for item in requires):
+                raise RuntimeError(f"插件 {plugin_id} 的 requires 必须是非空字符串组成的列表")
+            missing = [item for item in requires if item not in self.records]
+            if missing:
+                raise RuntimeError(f"插件 {plugin_id} 依赖不存在：" + "、".join(missing))
 
+            self._enable_stack.append(plugin_id)
             scope = EffectScope()
             try:
+                for dependency in requires:
+                    self.enable(dependency, persist=False)
+                    self.records[dependency].dependents.add(plugin_id)
+
                 if record.module is None:
                     self._load_generation += 1
                     module_name = f"deepseek_termux_plugin_{plugin_id}_{self._load_generation}"
@@ -150,6 +162,9 @@ class PluginManager:
                 record.enabled = False
                 record.error = str(exc)
                 raise RuntimeError(f"插件 {plugin_id} 启用失败：{exc}") from exc
+            finally:
+                if self._enable_stack and self._enable_stack[-1] == plugin_id:
+                    self._enable_stack.pop()
 
     def disable(self, plugin_id: str, *, persist: bool = True, force: bool = False) -> None:
         with self._lock:
@@ -168,6 +183,10 @@ class PluginManager:
             errors = record.scope.dispose() if record.scope else []
             record.scope = None
             record.enabled = False
+            for dependency in record.meta.get("requires", []):
+                dependency_record = self.records.get(dependency)
+                if dependency_record:
+                    dependency_record.dependents.discard(plugin_id)
             if errors:
                 record.error = "；".join(errors)
             if persist:
