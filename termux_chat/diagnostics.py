@@ -169,11 +169,22 @@ class DiagnosticLogger:
                                    for event in incident.get("events", []))
                 archive.writestr("timeline.jsonl", timeline)
                 manifest["issue_id"] = safe_id
+                # Include only host records tied to this issue; never bundle unrelated user reports.
+                related = []
                 for name in ["app.log", *(f"app.log.{i}" for i in range(1, self.backups + 1))]:
                     log_source = self.directory / name
-                    if log_source.is_file():
-                        archive.write(log_source, f"logs/{name}")
-                        manifest["log_files"].append(name)
+                    if not log_source.is_file():
+                        continue
+                    for line in log_source.read_text(encoding="utf-8", errors="replace").splitlines():
+                        try:
+                            entry = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+                        if entry.get("event") == "issue.captured" and entry.get("details", {}).get("issue_id") == safe_id:
+                            related.append(line)
+                if related:
+                    archive.writestr("logs/issue-host.jsonl", "\\n".join(related) + "\\n")
+                    manifest["log_files"].append("issue-host.jsonl")
             else:
                 for name in ["app.log", *(f"app.log.{i}" for i in range(1, self.backups + 1))]:
                     source = self.directory / name
