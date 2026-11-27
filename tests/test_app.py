@@ -123,7 +123,7 @@ class AppTestCase(unittest.TestCase):
         stream_bytes = b"data: [DONE]\n\n"
         with patch("plugins.deepseek.plugin.urllib.request.urlopen", side_effect=[eof, io.BytesIO(stream_bytes)]) as open_url:
             with patch("plugins.deepseek.plugin.time.sleep"):
-            events = list(DeepSeekProvider(settings).stream(request, threading.Event()))
+                events = list(DeepSeekProvider(settings).stream(request, threading.Event()))
         self.assertEqual(open_url.call_count, 2)
         self.assertEqual(events, [])
 
