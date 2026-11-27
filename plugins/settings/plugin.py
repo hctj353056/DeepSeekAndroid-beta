@@ -1,4 +1,4 @@
-"""线程安全的本地设置服务。"""
+"""线程安全的本地设置服务，支持从项目目录读取主体提示词与 API Key。"""
 
 from __future__ import annotations
 
@@ -24,9 +24,18 @@ DEFAULTS = {
 
 
 class Settings:
-    def __init__(self, data_dir: Path) -> None:
+    def __init__(self, data_dir: Path, root_dir: Path) -> None:
         self.data_dir = Path(data_dir)
+        self.root_dir = Path(root_dir).resolve()
         self.file = self.data_dir / "settings.json"
+        self.api_key_file = Path(os.environ.get(
+            "DEEPSEEK_API_KEY_FILE", str(self.root_dir / "001.key")
+        )).expanduser()
+        prompt_path = Path(os.environ.get(
+            "DEEPSEEK_SYSTEM_PROMPT_FILE",
+            str(self.root_dir / "灵魂架构" / "灵魂架构.md"),
+        )).expanduser()
+        self.system_prompt_file = prompt_path if prompt_path.is_absolute() else (self.root_dir / prompt_path).resolve()
         self._lock = threading.RLock()
         self._values = dict(DEFAULTS)
         self._values["provider"] = os.environ.get("DEEPSEEK_PROVIDER", self._values["provider"])
@@ -51,17 +60,36 @@ class Settings:
         os.chmod(temp, 0o600)
         os.replace(temp, self.file)
 
+    def _file_text(self, path: Path) -> str:
+        try:
+            return path.read_text(encoding="utf-8-sig").strip()
+        except FileNotFoundError:
+            return ""
+
     def get(self, key: str):
         with self._lock:
-            if key == "api_key" and os.environ.get("DEEPSEEK_API_KEY"):
-                return os.environ["DEEPSEEK_API_KEY"]
+            if key == "api_key":
+                if os.environ.get("DEEPSEEK_API_KEY"):
+                    return os.environ["DEEPSEEK_API_KEY"].strip()
+                file_key = self._file_text(self.api_key_file)
+                if file_key:
+                    return file_key
+            if key == "system_prompt":
+                file_prompt = self._file_text(self.system_prompt_file)
+                if file_prompt:
+                    return file_prompt
             return self._values[key]
 
     def public(self) -> dict:
         with self._lock:
             result = {key: value for key, value in self._values.items() if key != "api_key"}
+            result["system_prompt"] = self.get("system_prompt")
+            result["system_prompt_from_file"] = bool(self._file_text(self.system_prompt_file))
+            result["system_prompt_file"] = str(self.system_prompt_file)
             result["api_key_set"] = bool(self.get("api_key"))
             result["api_key_from_env"] = bool(os.environ.get("DEEPSEEK_API_KEY"))
+            result["api_key_from_file"] = bool(self._file_text(self.api_key_file))
+            result["api_key_file"] = str(self.api_key_file)
             return result
 
     def update(self, updates: dict) -> dict:
@@ -99,4 +127,4 @@ class Settings:
 
 
 def apply(ctx):
-    ctx.provide("settings", Settings(ctx.paths.data_dir))
+    ctx.provide("settings", Settings(ctx.paths.data_dir, ctx.paths.root))
