@@ -363,6 +363,11 @@ async function sendMessage() {
       nodes.markdown.insertAdjacentHTML("beforeend", renderMarkdown(source));
     },
     renderPreview(text, append) {
+      if (!append && !text) {
+        previewNode?.remove();
+        previewNode = null;
+        return;
+      }
       if (!previewNode) {
         previewNode = document.createElement("div");
         previewNode.className = "streaming-preview";
