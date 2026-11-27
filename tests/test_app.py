@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import io
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from termux_chat.context import Context
 from termux_chat.plugin_manager import PluginManager
 from termux_chat.server import trusted_api_request
+from plugins.deepseek.plugin import DeepSeekProvider
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,6 +106,40 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(assistant_with_call["reasoning_content"], "需要先读取设备时间。")
         saved = self.context.store.get(conversation["id"])
         self.assertEqual([message["role"] for message in saved["messages"]], ["user", "assistant", "tool", "assistant"])
+
+    def test_deepseek_adapter_emits_server_tool_calls_from_final_chunk(self) -> None:
+        payload = {
+            "server_tool_calls": [{
+                "step": 1,
+                "calls": [{
+                    "id": "server_call",
+                    "action": {"type": "web_search", "query": "example"},
+                    "signature": "opaque-signature",
+                }],
+            }]
+        }
+        chunks = [
+            {"choices": [{"delta": {"reasoning_content": "searching"}, "finish_reason": None}]},
+            {"choices": [{"delta": payload, "finish_reason": "stop"}]},
+            "[DONE]",
+        ]
+        stream_bytes = b"".join(
+            b"data: " + (item if isinstance(item, str) else json.dumps(item).encode()) + b"\\n\\n"
+            for item in chunks
+        )
+        settings = self.context.settings
+        settings.update({"api_key": "test-key"})
+        with patch("plugins.deepseek.plugin.urllib.request.urlopen", return_value=io.BytesIO(stream_bytes)):
+            events = list(DeepSeekProvider(settings).stream({
+                "model": "deepseek-flash",
+                "messages": [{"role": "user", "content": "search"}],
+                "thinking": True,
+                "reasoning_effort": "high",
+                "tools": [],
+            }, threading.Event()))
+        emitted = next(event["server_tool_calls"] for event in events if event["type"] == "server_tool_calls")
+        self.assertEqual(emitted, payload["server_tool_calls"])
+        self.assertEqual(emitted[0]["calls"][0]["signature"], "opaque-signature")
 
     def test_server_tool_calls_round_trip_unchanged(self) -> None:
         conversation = self.context.store.create()
