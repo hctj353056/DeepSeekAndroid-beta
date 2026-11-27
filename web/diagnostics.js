@@ -90,7 +90,7 @@
     status.textContent = "正在整理问题现场…";
     const note = redact(noteInput ? noteInput.value.trim() : "").slice(0, 2000);
     const payload = {
-      title: note.split("\\n")[0].slice(0, 80) || "用户标记的问题",
+      title: note.slice(0, 80) || "用户标记的问题",
       note,
       app_version: document.querySelector('meta[name="app-version"]')?.content || "unknown",
       user_agent: navigator.userAgent.slice(0, 300),
