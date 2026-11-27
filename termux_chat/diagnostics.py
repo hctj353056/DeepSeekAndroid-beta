@@ -183,7 +183,7 @@ class DiagnosticLogger:
                         if entry.get("event") == "issue.captured" and entry.get("details", {}).get("issue_id") == safe_id:
                             related.append(line)
                 if related:
-                    archive.writestr("logs/issue-host.jsonl", "\\n".join(related) + "\\n")
+                    archive.writestr("logs/issue-host.jsonl", "\n".join(related) + "\n")
                     manifest["log_files"].append("issue-host.jsonl")
             else:
                 for name in ["app.log", *(f"app.log.{i}" for i in range(1, self.backups + 1))]:
