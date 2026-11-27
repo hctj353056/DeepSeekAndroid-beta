@@ -2,13 +2,13 @@
 
 当前版本：**DeepSeekAndroid-betaV0.0.6**
 
-面向 Android / Termux 的非官方 DeepSeek 文本聊天客户端。Python 稳定宿主监听本机回环地址，手机浏览器渲染竖屏界面；V0.0.5 建立 A／B 主体热切换，V0.0.6 新增独立、安全的回答渲染模块，完善 Markdown、GFM 表格和移动端展示。
+面向 Android / Termux 的非官方 DeepSeek 文本聊天客户端。Python 稳定宿主监听本机回环地址，手机浏览器渲染竖屏界面；V0.0.5 建立 A／B 主体热切换，V0.0.6 新增独立、安全的回答渲染模块，完善 Markdown、GFM 表格、移动端展示与增量流式渲染。
 
 > 这不是原生 APK。运行时零第三方 Python 依赖，不需要 pip、Node.js 或前端构建，建议 Python 3.10+。
 
 ## 版本说明
 
-- **V0.0.6**：新增独立回答渲染模块，支持安全 Markdown、斜体、水平分隔线、GFM 表格、代码复制和窄屏容器滚动；预留 ContentBlock 扩展点，并加入 JavaScript 渲染测试。
+- **V0.0.6**：新增独立回答渲染模块，支持安全 Markdown、GFM 表格、代码复制、窄屏容器滚动与按动画帧批量更新的增量流式呈现；预留 ContentBlock 扩展点。
 - **V0.0.5**：引入稳定宿主、A／B 独立智能体主体、不可变历史版本、隔离候选检查、激活与回滚；静态资源改为网络优先，避免旧 Service Worker 缓存遮蔽修复。
 - **V0.0.4**：修复手机插件弹窗滚动；首次启动自动创建 API Key 文件和默认灵魂架构；支持从本地文件加载主体提示词；对 TLS EOF 连接错误提供重试与诊断。
 - **V0.0.3**：加强插件依赖校验、依赖循环检测与生命周期测试；继续使用 `main.py` 启动。
@@ -80,7 +80,7 @@ DEEPSEEK_API_KEY="你的 Key" python main.py
 
 安全边界：所有模型文本默认转义，不执行原始 HTML、脚本或事件属性；链接仅允许 HTTP／HTTPS，新窗口链接带 `noopener noreferrer nofollow`。行内代码不会被强调或链接规则二次改写。
 
-预留的 `renderContent()` 目前仅接受 `markdown`、`text`、`code` 三类 ContentBlock，其他类型明确报错。**本期不包含图表、流程图、交互卡片、完整 ResponseSchema 或增量 DOM 协议**；这些保留给后续阶段。
+预留的 `renderContent()` 目前仅接受 `markdown`、`text`、`code` 三类 ContentBlock，其他类型明确报错。流式阶段会将未完成的 Markdown 块暂以安全纯文本显示；块边界确定后再渲染并固定到 DOM，避免每个 token 重建整条回答。**本阶段不包含图表、流程图、交互卡片或完整 ResponseSchema**；这些保留给后续阶段。
 
 ## DSA A／B 主体热切换（V0.0.5）
 
@@ -253,7 +253,7 @@ python -m unittest discover -s tests -v
 node --test tests/test_response_renderer.js
 ```
 
-Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 10 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 10 项回答渲染测试；PR 目标分支支持 main 与 release/**。
+Python 测试共 22 项，覆盖插件、存储、DeepSeek 适配器、本地 API、安全和 DSA A/B 主体生命周期。渲染模块另有 12 项 Node.js 测试，覆盖基础语法、GFM 表格、代码转义、链接协议、原始 HTML 安全边界、未闭合代码围栏和 ContentBlock 回退。GitHub Actions 会在 Python 3.10／3.12 上执行 22 项 Python 单元测试，并使用 Node.js 20 执行 12 项回答渲染测试；PR 目标分支支持 main 与 release/**。
 
 本版本已在 Linux／Chromium 中通过真实 SSE 检查长回答、表格、长代码、代码复制、深浅主题及 375／768／1024px 布局；表格与代码只在各自容器内横向滚动，用户上翻后不会被流式输出强制拉回，控制台无错误。测试未使用真实 API Key，尚未在真实 Termux 设备上执行；实际回答仍需有效 Key 和网络连接。
 
