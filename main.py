@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 from termux_chat import __version__
 from termux_chat.context import Context
+from termux_chat.diagnostics import DiagnosticLogger
 from termux_chat.plugin_manager import PluginManager
 from termux_chat.server import create_server
 
@@ -44,6 +45,9 @@ def main() -> None:
     args.data_dir.mkdir(parents=True, exist_ok=True)
     context = Context()
     context.provide("paths", SimpleNamespace(root=root, data_dir=args.data_dir, web_root=root / "web"))
+    diagnostics = DiagnosticLogger(args.data_dir)
+    context.provide("diagnostics", diagnostics)
+    diagnostics.record("INFO", "app.start", {"version": __version__, "host": args.host, "port": args.port})
     manager = PluginManager(root, context, args.data_dir)
     manager.load_profile(args.profile)
 
@@ -68,6 +72,7 @@ def main() -> None:
     except KeyboardInterrupt:
         print("\n正在停止…")
     finally:
+        diagnostics.record("INFO", "app.stop", {})
         server.server_close()
         manager.shutdown()
 
