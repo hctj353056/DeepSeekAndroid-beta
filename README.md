@@ -1,17 +1,25 @@
 # DeepSeekAndroid-beta
 
-当前版本：**DeepSeekAndroid-betaV0.0.2**
+当前版本：**DeepSeekAndroid-betaV0.0.3**
 
-面向 Android / Termux 的非官方 DeepSeek 文本聊天客户端。Python 后端监听本机回环地址，手机浏览器渲染竖屏界面；V0.0.2 新增模型、存储、Agent 循环和工具均可插拔的模块化实现。
+面向 Android / Termux 的非官方 DeepSeek 文本聊天客户端。Python 后端监听本机回环地址，手机浏览器渲染竖屏界面；V0.0.2 建立模型、存储、Agent 循环和工具的插件化骨架；V0.0.3 加强插件依赖校验与生命周期可靠性。
 
 > 这不是原生 APK。运行时零第三方 Python 依赖，不需要 pip、Node.js 或前端构建，建议 Python 3.10+。
 
 ## 版本说明
 
-- **V0.0.2**：从 `main.py` 启动的插件化版本，包含 `termux_chat/`、`plugins/`、`web/` 和自动化测试。
+- **V0.0.3**：加强插件依赖校验、依赖循环检测与生命周期测试；继续使用 `main.py` 启动。
+- **V0.0.2**：引入插件化实现、服务端工具调用历史保存、本地 API 来源校验和自动化测试。
 - **V0.0.1**：保留的 `deepseek_mobile.py` 单文件版本，便于回溯和对比。
 
 两个版本的设置与会话数据**不共享**：V0.0.2 默认使用项目下的 `data/`，V0.0.1 默认使用 `~/.deepseek-termux/`。
+
+## V0.0.3 已实现
+
+- 启用插件前检查 `requires` 是否为有效列表，并提前报告未知依赖。
+- 检测插件依赖循环，错误信息包含依赖路径，避免无限递归加载。
+- 依赖注册关系在插件停用时同步清理。
+- 新增依赖循环与未知依赖回归测试。
 
 ## V0.0.2 已实现
 
@@ -180,7 +188,7 @@ def apply(ctx):
 
 ## 数据与安全
 
-V0.0.2 数据位置：
+V0.0.2 及 V0.0.3 数据位置：
 
 - 会话：`data/conversations/*.json`。
 - 设置：`data/settings.json`。
