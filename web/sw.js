@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "deepseek-termux-v0.0.6-diagnostics";
+const CACHE = "deepseek-termux-v0.0.6-issue-capture";
 const ASSETS = ["/styles.css", "/response-renderer.js", "/vendor/highlight.min.js", "/app.js", "/diagnostics.js", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
