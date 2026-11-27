@@ -158,7 +158,7 @@ def make_supervisor_handler(supervisor: RuntimeSupervisor):
 
         def _diagnostics(self, method: str, path: str) -> None:
             try:
-                logger = self.supervisor.diagnostics
+                logger = supervisor.diagnostics
                 if method == "GET" and path == "/api/diagnostics/export":
                     archive = logger.export_zip(__version__)
                     self.send_response(200)
