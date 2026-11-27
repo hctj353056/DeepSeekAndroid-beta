@@ -120,9 +120,9 @@ class AppTestCase(unittest.TestCase):
         }
         eof = urllib.error.URLError(__import__("ssl").SSLEOFError(
             __import__("ssl").SSL_ERROR_EOF, "UNEXPECTED_EOF_WHILE_READING"))
-        stream_bytes = b"data: [DONE]\\n\\n"
-        with patch("plugins.deepseek.plugin.urllib.request.urlopen", side_effect=[eof, io.BytesIO(stream_bytes)]) as open_url, \\
-             patch("plugins.deepseek.plugin.time.sleep"):
+        stream_bytes = b"data: [DONE]\n\n"
+        with patch("plugins.deepseek.plugin.urllib.request.urlopen", side_effect=[eof, io.BytesIO(stream_bytes)]) as open_url:
+            with patch("plugins.deepseek.plugin.time.sleep"):
             events = list(DeepSeekProvider(settings).stream(request, threading.Event()))
         self.assertEqual(open_url.call_count, 2)
         self.assertEqual(events, [])
