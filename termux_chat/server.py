@@ -48,6 +48,7 @@ class AppHTTPServer(ThreadingHTTPServer):
 
 def make_handler(context, plugin_manager, web_root: Path):
     web_root = web_root.resolve()
+    diagnostics = getattr(context, "diagnostics", None)
 
     def public_config() -> dict:
         config = context.settings.public()
@@ -60,6 +61,12 @@ def make_handler(context, plugin_manager, web_root: Path):
 
         def log_message(self, fmt, *args):
             print(f"[{self.log_date_time_string()}] {fmt % args}")
+            if diagnostics is not None:
+                diagnostics.record("INFO", "http.access", {
+                    "method": self.command,
+                    "path": urlsplit(self.path).path,
+                    "message": str(fmt % args)[:300],
+                })
 
         def _json(self, status: int, data) -> None:
             body = json.dumps(data, ensure_ascii=False).encode("utf-8")
@@ -102,7 +109,27 @@ def make_handler(context, plugin_manager, web_root: Path):
                 self._json(403, {"error": "请求来源未通过本地 API 校验"})
                 return True
             try:
-                if path == "/api/health" and method == "GET":
+                if path == "/api/diagnostics/export" and method == "GET":
+                    self._diagnostics_export()
+                elif path == "/api/diagnostics/report" and method == "POST":
+                    body = self._read_json()
+                    if diagnostics is None:
+                        raise RuntimeError("诊断日志服务未初始化")
+                    diagnostics.record_action(
+                        str(body.get("action", "")), str(body.get("observed", "")),
+                        str(body.get("expected", "")), str(body.get("steps", "")),
+                        str(body.get("note", "")),
+                    )
+                    self._json(201, {"saved": True})
+                elif path == "/api/diagnostics/client-event" and method == "POST":
+                    body = self._read_json()
+                    if diagnostics is None:
+                        raise RuntimeError("诊断日志服务未初始化")
+                    event = str(body.get("event", "client.event"))[:80]
+                    message = str(body.get("message", ""))[:1500]
+                    diagnostics.record("WARN", "client." + event, {"message": message})
+                    self._json(202, {"saved": True})
+                elif path == "/api/health" and method == "GET":
                     self._json(200, {
                         "ok": True,
                         "version": __version__,
@@ -151,6 +178,20 @@ def make_handler(context, plugin_manager, web_root: Path):
             except Exception as exc:
                 self._json(500, {"error": str(exc)})
             return True
+
+        def _diagnostics_export(self) -> None:
+            if diagnostics is None:
+                self._json(503, {"error": "诊断日志服务未初始化"})
+                return
+            body = diagnostics.export_zip(__version__)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/zip")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Disposition", 'attachment; filename="dsa-diagnostics.zip"')
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(body)
 
         def _chat(self) -> None:
             body = self._read_json()
