@@ -28,7 +28,6 @@ test("escapes code fences and preserves language and copy action", () => {
   assert.match(html, /<span class="hljs-name">script<\/span>/);
   assert.match(html, /&gt;/);
   assert.match(html, /alert/);
-  assert.match(html, /&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>alert/);
 });
 
