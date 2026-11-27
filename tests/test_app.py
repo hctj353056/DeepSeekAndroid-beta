@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 from termux_chat.context import Context
 from termux_chat.plugin_manager import PluginManager
+from termux_chat.server import trusted_api_request
 
 
 ROOT = Path(__file__).resolve().parents[1]
