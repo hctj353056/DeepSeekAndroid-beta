@@ -57,7 +57,28 @@ class StableHostDiagnosticsTests(unittest.TestCase):
                 with urllib.request.urlopen(event, timeout=3) as response:
                     self.assertEqual(response.status, 202)
 
-                with urllib.request.urlopen(base + "/api/diagnostics/export", timeout=3) as response:
+                incident = urllib.request.Request(
+                    base + "/api/diagnostics/incident",
+                    data=json.dumps({
+                        "title": "标记的现场",
+                        "note": "复现后导出",
+                        "events": [{"ts": "2026-11-27T10:00:00Z", "type": "ui.click", "details": {"id": "issueStart"}}],
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(incident, timeout=3) as response:
+                    self.assertEqual(response.status, 201)
+                    issue_id = json.loads(response.read())["id"]
+
+                with urllib.request.urlopen(base + "/api/diagnostics/export?issue_id=" + issue_id, timeout=3) as response:
+                    self.assertEqual(response.headers.get_content_type(), "application/zip")
+                    archive = zipfile.ZipFile(BytesIO(response.read()))
+                    self.assertIn("issue.md", archive.namelist())
+                    self.assertIn("timeline.jsonl", archive.namelist())
+                    report = archive.read("issue.md").decode("utf-8")
+                    self.assertIn("标记的现场", report)
+
                     self.assertEqual(response.headers.get_content_type(), "application/zip")
                     archive = zipfile.ZipFile(BytesIO(response.read()))
                     log_text = archive.read("logs/app.log").decode("utf-8")
