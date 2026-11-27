@@ -238,6 +238,106 @@
     return output.join("");
   }
 
+  function findStableBoundary(source) {
+    const text = String(source ?? "");
+    let offset = 0;
+    let inFence = false;
+    let blankEnd = -1;
+    let boundary = 0;
+    const lines = text.split("\n");
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const lineEnd = offset + line.length + (index < lines.length - 1 ? 1 : 0);
+      if (/^\s*```/.test(line)) {
+        inFence = !inFence;
+      } else if (!inFence) {
+        if (!line.trim()) {
+          if (offset > 0) blankEnd = lineEnd;
+        } else if (blankEnd >= 0) {
+          // A blank line followed by another list/quote/indented item may still
+          // belong to the same Markdown block; keep it in the mutable tail.
+          const continuation = /^\s*(?:[-*+]\s+|\d+[.)]\s+|>)/.test(line)
+            || /^\s{2,}\S/.test(line);
+          if (!continuation) boundary = blankEnd;
+          blankEnd = -1;
+        }
+      }
+      offset = lineEnd;
+    }
+    return boundary;
+  }
+
+  function createStreamingRenderer(options = {}) {
+    const renderStable = options.renderStable;
+    const renderPreview = options.renderPreview;
+    if (typeof renderStable !== "function" || typeof renderPreview !== "function") {
+      throw new TypeError("流式渲染器需要 renderStable 与 renderPreview 回调");
+    }
+    const schedule = options.schedule || ((callback) => requestAnimationFrame(callback));
+    const cancel = options.cancel || ((handle) => cancelAnimationFrame(handle));
+    let pending = "";
+    let previewLength = 0;
+    let queued = false;
+    let frameHandle = null;
+    let finished = false;
+
+    function flush(final = false) {
+      if (finished) return;
+      const boundary = final ? pending.length : findStableBoundary(pending);
+      if (boundary > 0) {
+        const stable = pending.slice(0, boundary);
+        pending = pending.slice(boundary);
+        renderStable(stable);
+        previewLength = 0;
+        renderPreview(pending, false);
+        previewLength = pending.length;
+      } else if (pending.length > previewLength) {
+        renderPreview(pending.slice(previewLength), true);
+        previewLength = pending.length;
+      }
+      if (final) {
+        pending = "";
+        previewLength = 0;
+        renderPreview("", false);
+        finished = true;
+      }
+      if (typeof options.onFlush === "function") options.onFlush();
+    }
+
+    function queueFlush() {
+      if (queued || finished) return;
+      queued = true;
+      frameHandle = schedule(() => {
+        queued = false;
+        frameHandle = null;
+        flush(false);
+      });
+    }
+
+    return Object.freeze({
+      append(chunk) {
+        if (finished) throw new Error("流式渲染器已结束");
+        pending += String(chunk ?? "");
+        queueFlush();
+      },
+      flush() {
+        queued = false;
+        if (frameHandle !== null) cancel(frameHandle);
+        frameHandle = null;
+        flush(false);
+      },
+      finish() {
+        if (finished) return;
+        queued = false;
+        if (frameHandle !== null) cancel(frameHandle);
+        frameHandle = null;
+        flush(true);
+      },
+      get pending() { return pending; },
+      get finished() { return finished; },
+    });
+  }
+
   function normalizeBlocks(input) {
     if (typeof input === "string" || input == null) return [{ type: "markdown", text: String(input ?? "") }];
     const source = Array.isArray(input) ? input : [input];
