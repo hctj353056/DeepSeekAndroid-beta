@@ -47,7 +47,7 @@ class AppTestCase(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.temp.name)
         self.context = Context()
-        self.context.provide("paths", SimpleNamespace(root=ROOT, data_dir=self.data_dir, web_root=ROOT / "web"))
+        self.context.provide("paths", SimpleNamespace(root=self.data_dir, data_dir=self.data_dir, web_root=ROOT / "web"))
         self.manager = PluginManager(ROOT, self.context, self.data_dir)
         self.manager.load_profile()
         self.context.settings.update({"provider": "demo"})
