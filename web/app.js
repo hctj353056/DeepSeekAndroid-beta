@@ -469,6 +469,20 @@ async function sendMessage() {
           const toolNodes = [...nodes.toolSlot.querySelectorAll(".tool-event")];
           const target = toolNodes.reverse().find((node) => node.dataset.toolName === event.name);
           if (target) target.querySelector("span").innerHTML = `<strong>${escapeHtml(event.name)}</strong> · 执行完成`;
+        } else if (event.type === "server_tool_event") {
+          const serverEvent = event.event || {};
+          const call = serverEvent.call || {};
+          const action = call.action || {};
+          const name = action.type === "web_search" ? "联网搜索" : "网页阅读";
+          if (serverEvent.type === "call_started") {
+            addToolEvent(nodes, name, "DeepSeek 服务端正在执行");
+            scrollBottom();
+          } else if (serverEvent.type === "call_completed") {
+            const toolNodes = [...nodes.toolSlot.querySelectorAll(".tool-event")];
+            const target = toolNodes.reverse().find((node) => node.dataset.toolName === name);
+            const status = call.status === "success" ? "已完成" : "未完成";
+            if (target) target.querySelector("span").innerHTML = `<strong>${escapeHtml(name)}</strong> · ${status}`;
+          }
         } else if (event.type === "done") {
           completed = true;
           if (event.cancelled) aborted = true;
