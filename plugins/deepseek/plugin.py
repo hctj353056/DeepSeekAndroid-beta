@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import socket
+import ssl
+import time
 import urllib.error
 import urllib.request
 
@@ -40,7 +43,7 @@ class DeepSeekProvider:
         )
         response = None
         try:
-            response = urllib.request.urlopen(http_request, timeout=180)
+            response = self._open_connection(http_request)
             for data in self._sse_data(response):
                 if cancel_event.is_set():
                     return
@@ -93,10 +96,42 @@ class DeepSeekProvider:
                 pass
             raise RuntimeError(f"DeepSeek API 返回 HTTP {exc.code}：{detail}") from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(f"无法连接 DeepSeek API：{exc.reason}") from exc
+            reason = exc.reason
+            if isinstance(reason, ssl.SSLError) or "UNEXPECTED_EOF_WHILE_READING" in str(reason):
+                raise RuntimeError(
+                    "DeepSeek API 的 TLS 连接被提前关闭（SSL EOF）。这通常与网络/VPN/代理线路或 API 地址连接有关，"
+                    "通常不是 API Key 错误。请检查 Base URL（默认 https://api.deepseek.com），"
+                    "并尝试切换网络或 VPN 后重试。"
+                ) from exc
+            raise RuntimeError(f"无法连接 DeepSeek API：{reason}") from exc
+        except ssl.SSLError as exc:
+            raise RuntimeError(
+                "DeepSeek API 的 TLS 连接中断（SSL EOF）。请检查网络/VPN/代理和 Base URL；"
+                "这类连接错误通常不是 API Key 错误。"
+            ) from exc
+        except (ConnectionResetError, socket.timeout, TimeoutError) as exc:
+            raise RuntimeError(
+                f"连接 DeepSeek API 时网络中断：{exc}。请检查网络/VPN/代理后重试。"
+            ) from exc
         finally:
             if response is not None:
                 response.close()
+
+    @staticmethod
+    def _open_connection(http_request):
+        """Retry only transient connection setup failures, before stream data is consumed."""
+        for attempt in range(3):
+            try:
+                return urllib.request.urlopen(http_request, timeout=180)
+            except urllib.error.URLError as exc:
+                reason = exc.reason
+                transient = (
+                    isinstance(reason, (ssl.SSLError, socket.timeout, ConnectionResetError, TimeoutError))
+                    or "UNEXPECTED_EOF_WHILE_READING" in str(reason)
+                )
+                if not transient or attempt == 2:
+                    raise
+                time.sleep(attempt + 1)
 
     @staticmethod
     def _sse_data(response):
