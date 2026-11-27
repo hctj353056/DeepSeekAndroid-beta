@@ -1,0 +1,7 @@
+{
+  "id": "url_reader",
+  "name": "DeepSeek 链接阅读",
+  "version": "1.0.0",
+  "description": "向模型请求注入 deepseek_read_url 服务端工具。",
+  "provides": ["tools:deepseek_read_url"]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "clock",
+  "name": "本地时钟工具",
+  "version": "1.0.0",
+  "description": "注册 get_local_time 函数工具，演示模型—工具—模型闭环。",
+  "provides": ["tools:get_local_time"]
+}

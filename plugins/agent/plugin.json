@@ -1,0 +1,9 @@
+{
+  "id": "agent",
+  "name": "插件化 Agent 循环",
+  "version": "1.0.0",
+  "description": "组装上下文、调用模型、执行本地工具并保存每一轮消息。",
+  "requires": ["settings", "json_store"],
+  "provides": ["chat"],
+  "core": true
+}

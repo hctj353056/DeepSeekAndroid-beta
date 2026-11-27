@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="DeepSeek 本地客户端">
+  <rect width="512" height="512" rx="96" fill="#3964fe"/>
+  <path d="M112 128h288v210H225l-82 70v-70h-31z" fill="#fff"/>
+  <path d="M174 205h168M174 266h106" fill="none" stroke="#3964fe" stroke-width="24" stroke-linecap="round"/>
+  <path d="M369 84v56M341 112h56" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round"/>
+</svg>

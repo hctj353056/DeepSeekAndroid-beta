@@ -1,0 +1,13 @@
+{
+  "name": "termux-mobile",
+  "plugins": [
+    "settings",
+    "json_store",
+    "deepseek",
+    "demo",
+    "clock",
+    "web_search",
+    "url_reader",
+    "agent"
+  ]
+}

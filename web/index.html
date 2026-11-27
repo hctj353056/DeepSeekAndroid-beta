@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="在 Termux 本地运行的 DeepSeek 插件化聊天界面">
+  <title>DeepSeek · 本地</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true">
+    <defs>
+      <symbol id="i-logo" viewBox="0 0 32 32">
+        <path d="M6 7.5h20v14H14l-6 5v-5H6z" fill="currentColor" stroke="none"/>
+        <path d="M11 13h10M11 17h6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <path d="M23 3v4M21 5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7a7 7 0 0 0-.8-1.8l.9-1.9L15 4l-1.9.9a7 7 0 0 0-1.8-.8L10.5 2h-3l-.7 2a7 7 0 0 0-1.8.8L3.1 4 1 6.1 2 8a7 7 0 0 0-.8 1.8l-2 .7v3l2 .7a7 7 0 0 0 .8 1.8l-1 1.9L3.1 20l1.9-.9a7 7 0 0 0 1.8.8l.7 2h3l.7-2a7 7 0 0 0 1.8-.8l1.9.9 2.1-2.1-.9-1.9a7 7 0 0 0 .8-1.8z" transform="translate(2 0) scale(.92)"/></symbol>
+      <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M19 13h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H7v-4H4v-4h2a2 2 0 1 0 0-4H4V5h4V3a2 2 0 1 1 4 0v2h4v4h3z" transform="translate(1 1) scale(.92)"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 5v14"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9.5 4A3 3 0 0 0 4 6.5a3 3 0 0 0 .4 1.5A3.5 3.5 0 0 0 3 14a3.5 3.5 0 0 0 3.5 3.5A3 3 0 0 0 12 20V6a3 3 0 0 0-2.5-2ZM14.5 4A3 3 0 0 1 20 6.5a3 3 0 0 1-.4 1.5A3.5 3.5 0 0 1 21 14a3.5 3.5 0 0 1-3.5 3.5A3 3 0 0 1 12 20"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="app" class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="对话与工具">
+      <div class="brand-row">
+        <div class="brand"><svg class="brand-icon"><use href="#i-logo"/></svg><span>DeepSeek</span><span class="local-tag">本地</span></div>
+        <button id="closeSidebar" class="icon-button mobile-only" aria-label="关闭侧边栏"><svg><use href="#i-close"/></svg></button>
+      </div>
+      <button id="newChatSide" class="new-chat-button"><svg><use href="#i-plus"/></svg><span>开启新对话</span></button>
+      <div class="sidebar-section-title">最近对话</div>
+      <nav id="conversationList" class="conversation-list" aria-label="历史对话">
+        <div class="list-placeholder">正在读取本地会话…</div>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="openPlugins" class="sidebar-action"><svg><use href="#i-puzzle"/></svg><span>插件</span><span id="pluginCount" class="count-label"></span></button>
+        <button id="openSettings" class="sidebar-action"><svg><use href="#i-settings"/></svg><span>设置</span></button>
+      </div>
+    </aside>
+    <button id="sidebarBackdrop" class="sidebar-backdrop" aria-label="关闭侧边栏" tabindex="-1"></button>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <button id="menuButton" class="icon-button mobile-only" aria-label="打开侧边栏"><svg><use href="#i-menu"/></svg></button>
+        <h1 id="conversationTitle" class="conversation-title">新对话</h1>
+        <button id="newChatTop" class="icon-button" aria-label="新对话"><svg><use href="#i-plus"/></svg></button>
+      </header>
+
+      <section id="chatScroll" class="chat-scroll" aria-label="聊天内容">
+        <div id="welcome" class="welcome">
+          <div class="welcome-inner">
+            <svg class="welcome-logo"><use href="#i-logo"/></svg>
+            <h2>有什么可以帮你？</h2>
+            <p id="welcomeHint">本地运行，插件按需协作</p>
+          </div>
+        </div>
+        <div id="messageList" class="message-list" aria-live="polite"></div>
+      </section>
+
+      <footer class="composer-area">
+        <form id="composer" class="composer">
+          <label for="messageInput" class="sr-only">发送给 DeepSeek 的消息</label>
+          <textarea id="messageInput" rows="2" maxlength="100000" placeholder="给 DeepSeek 发送消息" enterkeyhint="send"></textarea>
+          <div class="composer-row">
+            <div class="composer-toggles">
+              <button id="thinkingToggle" type="button" class="toggle selected" aria-pressed="true"><svg><use href="#i-brain"/></svg><span>深度思考</span></button>
+              <button id="searchToggle" type="button" class="toggle" aria-pressed="false"><svg><use href="#i-globe"/></svg><span>联网搜索</span></button>
+              <button id="readToggle" type="button" class="toggle icon-toggle" aria-pressed="false" aria-label="阅读消息中的链接" title="阅读消息中的链接"><svg><use href="#i-link"/></svg></button>
+            </div>
+            <button id="sendButton" type="submit" class="send-button" aria-label="发送消息" disabled><svg><use href="#i-send"/></svg></button>
+            <button id="stopButton" type="button" class="send-button stop-button" aria-label="停止生成" hidden><svg><use href="#i-stop"/></svg></button>
+          </div>
+        </form>
+        <div class="caveat"><span id="runtimeStatus">正在连接本地服务…</span><span aria-hidden="true"> · </span>内容由 AI 生成，请注意甄别</div>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="settingsDialog" class="dialog settings-dialog" aria-labelledby="settingsTitle">
+    <form id="settingsForm">
+      <header class="dialog-header"><h2 id="settingsTitle">设置</h2><button type="button" class="icon-button" data-close="settingsDialog" aria-label="关闭设置"><svg><use href="#i-close"/></svg></button></header>
+      <div class="dialog-body settings-body">
+        <section class="setting-section">
+          <h3>模型服务</h3>
+          <label class="field"><span>提供方</span><select id="providerInput" name="provider"><option value="deepseek">DeepSeek API</option><option value="demo">本地演示（无需 Key）</option></select></label>
+          <label class="field"><span>模型</span><input id="modelInput" name="model" value="deepseek-flash" required autocomplete="off"></label>
+          <label class="field"><span>API 地址</span><input id="baseUrlInput" name="base_url" type="url" required autocomplete="off"></label>
+          <label class="field"><span>API Key</span><input id="apiKeyInput" name="api_key" type="password" placeholder="留空则不修改" autocomplete="new-password"></label>
+          <div class="field-note-row"><small id="apiKeyHint">Key 仅写入本机设置文件</small><button id="clearKeyButton" type="button" class="text-button">清除已存 Key</button></div>
+        </section>
+        <section class="setting-section">
+          <h3>对话偏好</h3>
+          <label class="field"><span>推理强度</span><select id="effortInput" name="reasoning_effort"><option value="low">低</option><option value="high">高</option><option value="max">最高</option></select></label>
+          <label class="field"><span>系统提示词</span><textarea id="systemPromptInput" name="system_prompt" rows="4"></textarea></label>
+          <label class="field"><span>外观</span><select id="themeInput" name="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+        </section>
+      </div>
+      <footer class="dialog-footer"><button type="button" class="secondary-button" data-close="settingsDialog">取消</button><button type="submit" class="primary-button">保存设置</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="pluginsDialog" class="dialog plugins-dialog" aria-labelledby="pluginsTitle">
+    <header class="dialog-header"><h2 id="pluginsTitle">插件</h2><button type="button" class="icon-button" data-close="pluginsDialog" aria-label="关闭插件管理"><svg><use href="#i-close"/></svg></button></header>
+    <div class="dialog-body">
+      <p class="dialog-intro">模型、存储、Agent 循环与工具均通过统一上下文协作。启停会即时注册或撤销对应能力。</p>
+      <div id="pluginList" class="plugin-list"><div class="list-placeholder">正在读取插件…</div></div>
+      <p class="security-note">插件拥有与主程序相同的本机权限，只放置你信任的 Python 插件。新目录在重启后自动发现。</p>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

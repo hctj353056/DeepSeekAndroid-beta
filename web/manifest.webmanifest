@@ -1,0 +1,14 @@
+{
+  "name": "DeepSeek · 本地",
+  "short_name": "DeepSeek",
+  "description": "Termux 本地插件化 DeepSeek 聊天",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3964fe",
+  "icons": [
+    {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

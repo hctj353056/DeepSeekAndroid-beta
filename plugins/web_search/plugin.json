@@ -1,0 +1,7 @@
+{
+  "id": "web_search",
+  "name": "DeepSeek 联网搜索",
+  "version": "1.0.0",
+  "description": "向模型请求注入 deepseek_web_search 服务端工具，无需本地搜索密钥。",
+  "provides": ["tools:deepseek_web_search"]
+}
