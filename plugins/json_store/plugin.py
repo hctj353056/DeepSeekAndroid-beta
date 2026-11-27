@@ -96,20 +96,23 @@ class JsonStore:
             conversation["messages"].append(message)
             if len([m for m in conversation["messages"] if m.get("role") == "user"]) == 1:
                 first_user = next(m for m in conversation["messages"] if m.get("role") == "user")
-                conversation["title"] = first_user.get("content", "新对话").strip().splitlines()[0][:28] or "新对话"
+                first_line = first_user.get("content", "新对话").strip().splitlines()
+                conversation["title"] = (first_line[0][:28] if first_line else "") or "新对话"
             self._write(conversation)
             return message
 
     def model_messages(self, conversation_id: str, *, include_reasoning: bool) -> list[dict]:
-        conversation = self.get(conversation_id)
         messages = []
-        for saved in conversation["messages"]:
+        for saved in self.get(conversation_id)["messages"]:
             role = saved.get("role")
             if role not in {"user", "assistant", "tool"}:
                 continue
             item = {"role": role, "content": saved.get("content", "")}
             if role == "assistant" and saved.get("tool_calls"):
                 item["tool_calls"] = saved["tool_calls"]
+            if role == "assistant" and saved.get("server_tool_calls") is not None:
+                # DeepSeek 扩展字段需要原样回传；不要重建、筛选或改写其中的 signature。
+                item["server_tool_calls"] = saved["server_tool_calls"]
             if role == "assistant" and include_reasoning and saved.get("reasoning"):
                 item["reasoning_content"] = saved["reasoning"]
             if role == "tool":
