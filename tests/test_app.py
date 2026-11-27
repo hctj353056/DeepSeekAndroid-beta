@@ -5,6 +5,7 @@ import json
 import tempfile
 import threading
 import unittest
+import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -47,7 +48,7 @@ class AppTestCase(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.temp.name)
         self.context = Context()
-        self.context.provide("paths", SimpleNamespace(root=ROOT, data_dir=self.data_dir, web_root=ROOT / "web"))
+        self.context.provide("paths", SimpleNamespace(root=self.data_dir, data_dir=self.data_dir, web_root=ROOT / "web"))
         self.manager = PluginManager(ROOT, self.context, self.data_dir)
         self.manager.load_profile()
         self.context.settings.update({"provider": "demo"})
@@ -106,6 +107,25 @@ class AppTestCase(unittest.TestCase):
         self.assertEqual(assistant_with_call["reasoning_content"], "需要先读取设备时间。")
         saved = self.context.store.get(conversation["id"])
         self.assertEqual([message["role"] for message in saved["messages"]], ["user", "assistant", "tool", "assistant"])
+
+    def test_deepseek_adapter_retries_transient_tls_eof_before_stream(self) -> None:
+        settings = self.context.settings
+        settings.update({"api_key": "test-key"})
+        request = {
+            "model": "deepseek-flash",
+            "messages": [{"role": "user", "content": "hello"}],
+            "thinking": True,
+            "reasoning_effort": "high",
+            "tools": [],
+        }
+        eof = urllib.error.URLError(__import__("ssl").SSLEOFError(
+            __import__("ssl").SSL_ERROR_EOF, "UNEXPECTED_EOF_WHILE_READING"))
+        stream_bytes = b"data: [DONE]\n\n"
+        with patch("plugins.deepseek.plugin.urllib.request.urlopen", side_effect=[eof, io.BytesIO(stream_bytes)]) as open_url:
+            with patch("plugins.deepseek.plugin.time.sleep"):
+                events = list(DeepSeekProvider(settings).stream(request, threading.Event()))
+        self.assertEqual(open_url.call_count, 2)
+        self.assertEqual(events, [])
 
     def test_deepseek_adapter_emits_server_tool_calls_from_final_chunk(self) -> None:
         payload = {
@@ -175,6 +195,40 @@ class AppTestCase(unittest.TestCase):
         self.assertFalse(trusted_api_request(
             "127.0.0.1:8080", "", "application/x-www-form-urlencoded", "same-origin",
             8080, "127.0.0.1", "POST"))
+
+    def test_plugin_dependency_cycle_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plugin_root = root / "plugins"
+            for plugin_id, requires in (("alpha", ["beta"]), ("beta", ["alpha"])):
+                folder = plugin_root / plugin_id
+                folder.mkdir(parents=True)
+                (folder / "plugin.json").write_text(json.dumps({
+                    "id": plugin_id, "name": plugin_id, "requires": requires,
+                }), encoding="utf-8")
+                (folder / "plugin.py").write_text("def apply(ctx):\n    return None\n", encoding="utf-8")
+            manager = PluginManager(root, Context(), root / "data")
+            with self.assertRaisesRegex(RuntimeError, "依赖循环"):
+                manager.enable("alpha")
+            self.assertEqual(manager._enable_stack, [])
+            self.assertFalse(manager.records["alpha"].enabled)
+            self.assertFalse(manager.records["beta"].enabled)
+            manager.shutdown()
+
+    def test_unknown_plugin_dependency_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / "plugins" / "alpha"
+            folder.mkdir(parents=True)
+            (folder / "plugin.json").write_text(json.dumps({
+                "id": "alpha", "name": "alpha", "requires": ["missing_plugin"],
+            }), encoding="utf-8")
+            (folder / "plugin.py").write_text("def apply(ctx):\n    return None\n", encoding="utf-8")
+            manager = PluginManager(root, Context(), root / "data")
+            with self.assertRaisesRegex(RuntimeError, "依赖不存在"):
+                manager.enable("alpha")
+            self.assertFalse(manager.records["alpha"].enabled)
+            manager.shutdown()
 
     def test_cancellation_is_reported(self) -> None:
         conversation = self.context.store.create()

@@ -11,8 +11,13 @@ const elements = {
   settingsDialog: $("#settingsDialog"), settingsForm: $("#settingsForm"),
   provider: $("#providerInput"), model: $("#modelInput"), baseUrl: $("#baseUrlInput"),
   apiKey: $("#apiKeyInput"), apiKeyHint: $("#apiKeyHint"), clearKey: $("#clearKeyButton"),
-  effort: $("#effortInput"), systemPrompt: $("#systemPromptInput"), theme: $("#themeInput"),
-  pluginsDialog: $("#pluginsDialog"), pluginList: $("#pluginList"), toast: $("#toast"),
+  effort: $("#effortInput"), systemPrompt: $("#systemPromptInput"), systemPromptHint: $("#systemPromptHint"), theme: $("#themeInput"),
+  pluginsDialog: $("#pluginsDialog"), pluginList: $("#pluginList"),
+  runtimeDialog: $("#runtimeDialog"), runtimeBadge: $("#runtimeBadge"),
+  activeVersion: $("#activeVersion"), activeSlot: $("#activeSlot"), activeRuntimeDetail: $("#activeRuntimeDetail"),
+  candidateStatus: $("#candidateStatus"), prepareCandidate: $("#prepareCandidate"),
+  activateCandidate: $("#activateCandidate"), rollbackRuntime: $("#rollbackRuntime"), versionList: $("#versionList"),
+  toast: $("#toast"),
 };
 
 const state = {
@@ -24,6 +29,8 @@ const state = {
   controller: null,
   requestId: null,
   clearKey: false,
+  dsa: null,
+  dsaBusy: false,
   options: { thinking: true, web_search: false, read_url: false },
 };
 
@@ -214,68 +221,8 @@ async function deleteConversation(conversation) {
   toast("会话已删除");
 }
 
-function inlineMarkdown(source) {
-  let text = escapeHtml(source);
-  const inlineCodes = [];
-  text = text.replace(/`([^`\n]+)`/g, (_, code) => {
-    const index = inlineCodes.push(`<code>${code}</code>`) - 1;
-    return `@@INLINE${index}@@`;
-  });
-  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, label, url) =>
-    `<a href="${url}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`);
-  text = text.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  text = text.replace(/@@INLINE(\d+)@@/g, (_, index) => inlineCodes[Number(index)]);
-  return text;
-}
-
 function renderMarkdown(source) {
-  const codeBlocks = [];
-  const prepared = String(source || "").replace(/```([^\n`]*)\n?([\s\S]*?)```/g, (_, language, code) => {
-    const index = codeBlocks.push({ language: language.trim(), code: code.replace(/\n$/, "") }) - 1;
-    return `\n@@CODEBLOCK${index}@@\n`;
-  });
-  const lines = prepared.split("\n");
-  const output = [];
-  let paragraph = [];
-  let listType = "";
-  const flushParagraph = () => {
-    if (paragraph.length) output.push(`<p>${paragraph.map(inlineMarkdown).join("<br>")}</p>`);
-    paragraph = [];
-  };
-  const closeList = () => {
-    if (listType) output.push(`</${listType}>`);
-    listType = "";
-  };
-  for (const line of lines) {
-    const codeMatch = line.trim().match(/^@@CODEBLOCK(\d+)@@$/);
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
-    const unordered = line.match(/^\s*[-*+]\s+(.+)$/);
-    const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
-    if (codeMatch) {
-      flushParagraph(); closeList();
-      const block = codeBlocks[Number(codeMatch[1])];
-      output.push(`<div class="code-block"><div class="code-header"><span>${escapeHtml(block.language || "code")}</span><button type="button" class="code-copy">${icon("copy")}复制</button></div><pre><code>${escapeHtml(block.code)}</code></pre></div>`);
-    } else if (heading) {
-      flushParagraph(); closeList();
-      const level = heading[1].length;
-      output.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
-    } else if (unordered || ordered) {
-      flushParagraph();
-      const desired = unordered ? "ul" : "ol";
-      if (listType !== desired) { closeList(); listType = desired; output.push(`<${listType}>`); }
-      output.push(`<li>${inlineMarkdown((unordered || ordered)[1])}</li>`);
-    } else if (/^\s*>\s?/.test(line)) {
-      flushParagraph(); closeList();
-      output.push(`<blockquote>${inlineMarkdown(line.replace(/^\s*>\s?/, ""))}</blockquote>`);
-    } else if (!line.trim()) {
-      flushParagraph(); closeList();
-    } else {
-      closeList();
-      paragraph.push(line);
-    }
-  }
-  flushParagraph(); closeList();
-  return output.join("");
+  return window.DSAResponseRenderer.renderMarkdown(source);
 }
 
 function createUserMessage(message) {
@@ -408,14 +355,38 @@ async function sendMessage() {
   let renderQueued = false;
   let completed = false;
   let aborted = false;
+  let previewNode = null;
+  const streamRenderer = window.DSAResponseRenderer.createStreamingRenderer({
+    renderStable(source) {
+      previewNode?.remove();
+      previewNode = null;
+      nodes.markdown.insertAdjacentHTML("beforeend", renderMarkdown(source));
+    },
+    renderPreview(text, append) {
+      if (!append && !text) {
+        previewNode?.remove();
+        previewNode = null;
+        return;
+      }
+      if (!previewNode) {
+        previewNode = document.createElement("div");
+        previewNode.className = "streaming-preview";
+        nodes.markdown.appendChild(previewNode);
+      }
+      if (append) previewNode.appendChild(document.createTextNode(text));
+      else previewNode.textContent = text;
+    },
+    onFlush() {
+      nodes.markdown.classList.toggle("typing-cursor", !accumulated.content);
+      scrollBottom();
+    },
+  });
   const scheduleRender = () => {
     if (renderQueued) return;
     renderQueued = true;
     requestAnimationFrame(() => {
       renderQueued = false;
       updateReasoning(nodes, accumulated.reasoning, true);
-      nodes.markdown.innerHTML = renderMarkdown(accumulated.content);
-      nodes.markdown.classList.toggle("typing-cursor", !accumulated.content);
       scrollBottom();
     });
   };
@@ -458,7 +429,7 @@ async function sendMessage() {
         if (!event) continue;
         if (event.type === "delta") {
           accumulated.content += event.text || "";
-          scheduleRender();
+          streamRenderer.append(event.text || "");
         } else if (event.type === "reasoning") {
           accumulated.reasoning += event.text || "";
           scheduleRender();
@@ -491,11 +462,13 @@ async function sendMessage() {
         }
       }
     }
+    streamRenderer.finish();
     updateReasoning(nodes, accumulated.reasoning, false);
     nodes.markdown.classList.remove("typing-cursor");
     nodes.actions.hidden = !accumulated.content;
     if (!completed && !aborted) throw new Error("流式连接在回复完成前中断");
   } catch (error) {
+    streamRenderer.finish();
     aborted = aborted || error.name === "AbortError";
     if (!aborted) {
       nodes.markdown.classList.remove("typing-cursor");
@@ -551,15 +524,23 @@ function syncConfigForm() {
   elements.model.value = state.config.model;
   elements.baseUrl.value = state.config.base_url;
   elements.apiKey.value = "";
-  elements.apiKey.placeholder = state.config.api_key_set ? "已保存；留空则不修改" : "输入 DeepSeek API Key";
+  elements.apiKey.placeholder = state.config.api_key_from_file
+    ? "已由项目目录 Key 文件提供"
+    : (state.config.api_key_set ? "已保存；留空则不修改" : "输入 DeepSeek API Key");
   elements.apiKeyHint.textContent = state.config.api_key_from_env
     ? "当前使用环境变量中的 Key"
-    : (state.config.api_key_set ? "已保存于本机，不会回显" : "Key 仅写入本机设置文件");
-  elements.clearKey.disabled = state.config.api_key_from_env;
-  elements.clearKey.textContent = "清除已存 Key";
+    : (state.config.api_key_from_file
+      ? `优先读取文件：${state.config.api_key_file}（文件为明文）`
+      : (state.config.api_key_set ? "已保存于本机设置文件，不会回显" : "Key 可放在项目根目录 001.key"));
+  elements.clearKey.disabled = state.config.api_key_from_env || state.config.api_key_from_file;
+  elements.clearKey.textContent = state.config.api_key_from_file ? "Key 文件优先" : "清除已存 Key";
   state.clearKey = false;
   elements.effort.value = state.config.reasoning_effort;
-  elements.systemPrompt.value = state.config.system_prompt;
+  elements.systemPrompt.value = state.config.system_prompt_from_file ? "" : state.config.system_prompt;
+  elements.systemPrompt.readOnly = Boolean(state.config.system_prompt_from_file);
+  elements.systemPromptHint.textContent = state.config.system_prompt_from_file
+    ? `当前使用文件：${state.config.system_prompt_file}；修改此文件后重启服务即可更新`
+    : "未找到提示词文件，当前使用本机设置中的提示词";
   let theme = "auto";
   try { theme = localStorage.getItem("deepseek-termux-theme") || "auto"; } catch { /* 本地存储不可用时使用自动主题 */ }
   elements.theme.value = theme;
@@ -610,6 +591,103 @@ async function togglePlugin(button) {
   }
 }
 
+function renderRuntime() {
+  const dsa = state.dsa;
+  elements.prepareCandidate.disabled = !dsa || state.dsaBusy;
+  elements.activateCandidate.disabled = true;
+  elements.rollbackRuntime.disabled = true;
+  if (!dsa) {
+    elements.versionList.innerHTML = '<div class="list-placeholder">无法读取主体状态</div>';
+    return;
+  }
+  const active = dsa.slots[dsa.active_slot] || {};
+  const activeBusy = Number(active.active_requests || 0) > 0;
+  const candidate = dsa.candidate || { status: "empty" };
+  elements.runtimeBadge.textContent = dsa.active_version_id || "—";
+  elements.activeVersion.textContent = dsa.active_version_id || "—";
+  elements.activeSlot.textContent = `槽位 ${dsa.active_slot || "—"}`;
+  elements.activeRuntimeDetail.textContent = active.runtime_version
+    ? `运行时 v${active.runtime_version} · ${activeBusy ? `${active.active_requests} 个请求正在生成` : "当前没有生成中的回复"}`
+    : "活动主体状态未知";
+
+  const messages = [];
+  let failed = false;
+  if (state.dsaBusy) {
+    const busyText = {
+      candidate: "正在冻结实验源码，并在备用槽使用隔离数据检查…",
+      activate: "正在用正式数据复核候选并执行原子切换…",
+      rollback: "正在检查回滚目标并恢复上一版本…",
+    };
+    messages.push(busyText[state.dsaAction] || "正在处理主体操作…");
+  } else if (candidate.status === "ready") {
+    messages.push(`${candidate.version_id} 已在槽位 ${candidate.slot} 通过隔离检查，可以激活。`);
+  } else if (candidate.status === "failed") {
+    failed = true;
+    messages.push(`${candidate.version_id} 检查失败，当前生产主体未受影响。${candidate.error || ""}`);
+  } else if (candidate.status === "checking") {
+    messages.push(`${candidate.version_id} 正在进行隔离检查…`);
+  } else {
+    messages.push("修改实验源码后，先准备候选；检查通过后再激活。");
+  }
+  if (activeBusy) messages.push("当前有回复正在生成，完成排空后才能激活或回滚。");
+  elements.candidateStatus.classList.toggle("error", failed);
+  elements.candidateStatus.textContent = messages.join(" ");
+  elements.activateCandidate.disabled = state.dsaBusy || candidate.status !== "ready" || activeBusy;
+  elements.rollbackRuntime.disabled = state.dsaBusy || !dsa.previous_version_id || activeBusy;
+
+  if (!dsa.versions.length) {
+    elements.versionList.innerHTML = '<div class="list-placeholder">还没有版本快照</div>';
+    return;
+  }
+  elements.versionList.innerHTML = dsa.versions.map((version) => `
+    <div class="version-item">
+      <div class="version-heading">
+        <strong>${escapeHtml(version.id)}</strong>
+        ${version.active ? '<span class="status-badge current">当前</span>' : ""}
+        ${version.rollback_target ? '<span class="status-badge">回滚目标</span>' : ""}
+      </div>
+      <div class="version-meta">父版本 ${escapeHtml(version.parent_id || "无")} · ${escapeHtml(formatDate(version.created_at))}</div>
+      <code class="version-hash" title="${escapeHtml(version.source_hash)}">${escapeHtml(version.source_hash.slice(0, 12))}</code>
+    </div>`).join("");
+}
+
+async function loadRuntimeStatus() {
+  if (state.dsaBusy) return;
+  state.dsa = await api("/api/dsa/status");
+  renderRuntime();
+}
+
+async function runRuntimeAction(action) {
+  if (state.dsaBusy) return;
+  state.dsaBusy = true;
+  state.dsaAction = action;
+  renderRuntime();
+  let switching = false;
+  try {
+    const result = await api(`/api/dsa/${action}`, { method: "POST", body: {} });
+    state.dsa = result;
+    if (action === "candidate") {
+      toast(`${result.active_version_id} 保持运行，${result.candidate.version_id} 已通过隔离检查`);
+    } else {
+      switching = true;
+      toast(action === "activate" ? `已激活 ${result.active_version_id}，正在刷新` : `已回滚至 ${result.active_version_id}，正在刷新`);
+      window.setTimeout(() => window.location.reload(), 900);
+    }
+  } catch (error) {
+    await loadRuntimeStatusWithoutLock().catch(() => {});
+    toast(error.message || String(error));
+  } finally {
+    state.dsaBusy = false;
+    state.dsaAction = "";
+    if (!switching) renderRuntime();
+  }
+}
+
+async function loadRuntimeStatusWithoutLock() {
+  state.dsa = await api("/api/dsa/status");
+  renderRuntime();
+}
+
 function guarded(handler) {
   return async (event) => {
     try { await handler(event); } catch (error) { toast(error.message || String(error)); }
@@ -623,6 +701,11 @@ function bindEvents() {
   $("#newChatSide").addEventListener("click", newChat);
   $("#newChatTop").addEventListener("click", newChat);
   $("#openSettings").addEventListener("click", openSettings);
+  $("#openRuntime").addEventListener("click", guarded(async () => {
+    closeSidebar();
+    if (!elements.runtimeDialog.open) elements.runtimeDialog.showModal();
+    await loadRuntimeStatus();
+  }));
   $("#openPlugins").addEventListener("click", () => {
     renderPlugins();
     closeSidebar();
@@ -698,10 +781,13 @@ function bindEvents() {
     const button = event.target.closest(".switch");
     if (button) togglePlugin(button);
   });
+  elements.prepareCandidate.addEventListener("click", guarded(() => runRuntimeAction("candidate")));
+  elements.activateCandidate.addEventListener("click", guarded(() => runRuntimeAction("activate")));
+  elements.rollbackRuntime.addEventListener("click", guarded(() => runRuntimeAction("rollback")));
   document.querySelectorAll("[data-close]").forEach((button) => {
     button.addEventListener("click", () => document.getElementById(button.dataset.close).close());
   });
-  for (const dialog of [elements.settingsDialog, elements.pluginsDialog]) {
+  for (const dialog of [elements.settingsDialog, elements.pluginsDialog, elements.runtimeDialog]) {
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   }
   document.addEventListener("click", guarded(async (event) => {
@@ -730,12 +816,13 @@ async function init() {
   applyTheme(theme);
   resizeInput();
   try {
-    const [config, conversations, plugins] = await Promise.all([
-      api("/api/config"), api("/api/conversations"), api("/api/plugins"),
+    const [config, conversations, plugins, dsa] = await Promise.all([
+      api("/api/config"), api("/api/conversations"), api("/api/plugins"), api("/api/dsa/status"),
     ]);
     state.config = config;
     state.conversations = conversations.conversations;
     state.plugins = plugins.plugins;
+    state.dsa = dsa;
     state.options.thinking = config.thinking;
     state.options.web_search = config.web_search;
     state.options.read_url = config.read_url;
@@ -743,12 +830,16 @@ async function init() {
     syncOptions();
     renderConversations();
     renderPlugins();
+    renderRuntime();
     if (state.conversations.length) await loadConversation(state.conversations[0].id);
   } catch (error) {
     elements.runtimeStatus.textContent = "本地服务连接失败";
     elements.welcomeHint.textContent = error.message;
     toast(error.message);
   }
+  window.setInterval(() => {
+    if (elements.runtimeDialog.open && !state.dsaBusy) loadRuntimeStatus().catch(() => {});
+  }, 2000);
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }

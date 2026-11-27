@@ -9,6 +9,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <script src="/response-renderer.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -23,6 +24,7 @@
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7a7 7 0 0 0-.8-1.8l.9-1.9L15 4l-1.9.9a7 7 0 0 0-1.8-.8L10.5 2h-3l-.7 2a7 7 0 0 0-1.8.8L3.1 4 1 6.1 2 8a7 7 0 0 0-.8 1.8l-2 .7v3l2 .7a7 7 0 0 0 .8 1.8l-1 1.9L3.1 20l1.9-.9a7 7 0 0 0 1.8.8l.7 2h3l.7-2a7 7 0 0 0 1.8-.8l1.9.9 2.1-2.1-.9-1.9a7 7 0 0 0 .8-1.8z" transform="translate(2 0) scale(.92)"/></symbol>
       <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M19 13h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H7v-4H4v-4h2a2 2 0 1 0 0-4H4V5h4V3a2 2 0 1 1 4 0v2h4v4h3z" transform="translate(1 1) scale(.92)"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 16l9 5 9-5"/></symbol>
       <symbol id="i-send" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 5v14"/></symbol>
       <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-brain" viewBox="0 0 24 24"><path d="M9.5 4A3 3 0 0 0 4 6.5a3 3 0 0 0 .4 1.5A3.5 3.5 0 0 0 3 14a3.5 3.5 0 0 0 3.5 3.5A3 3 0 0 0 12 20V6a3 3 0 0 0-2.5-2ZM14.5 4A3 3 0 0 1 20 6.5a3 3 0 0 1-.4 1.5A3.5 3.5 0 0 1 21 14a3.5 3.5 0 0 1-3.5 3.5A3 3 0 0 1 12 20"/></symbol>
@@ -49,6 +51,7 @@
         <div class="list-placeholder">正在读取本地会话…</div>
       </nav>
       <div class="sidebar-footer">
+        <button id="openRuntime" class="sidebar-action"><svg><use href="#i-layers"/></svg><span>主体</span><span id="runtimeBadge" class="count-label">—</span></button>
         <button id="openPlugins" class="sidebar-action"><svg><use href="#i-puzzle"/></svg><span>插件</span><span id="pluginCount" class="count-label"></span></button>
         <button id="openSettings" class="sidebar-action"><svg><use href="#i-settings"/></svg><span>设置</span></button>
       </div>
@@ -107,7 +110,7 @@
         <section class="setting-section">
           <h3>对话偏好</h3>
           <label class="field"><span>推理强度</span><select id="effortInput" name="reasoning_effort"><option value="low">低</option><option value="high">高</option><option value="max">最高</option></select></label>
-          <label class="field"><span>系统提示词</span><textarea id="systemPromptInput" name="system_prompt" rows="4"></textarea></label>
+          <label class="field"><span>系统提示词</span><textarea id="systemPromptInput" name="system_prompt" rows="4"></textarea><div class="field-note-row"><small id="systemPromptHint">可从项目目录的 Markdown 文件读取</small></div></label>
           <label class="field"><span>外观</span><select id="themeInput" name="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
         </section>
       </div>
@@ -121,6 +124,29 @@
       <p class="dialog-intro">模型、存储、Agent 循环与工具均通过统一上下文协作。启停会即时注册或撤销对应能力。</p>
       <div id="pluginList" class="plugin-list"><div class="list-placeholder">正在读取插件…</div></div>
       <p class="security-note">插件拥有与主程序相同的本机权限，只放置你信任的 Python 插件。新目录在重启后自动发现。</p>
+    </div>
+  </dialog>
+
+  <dialog id="runtimeDialog" class="dialog plugins-dialog runtime-dialog" aria-labelledby="runtimeTitle">
+    <header class="dialog-header"><h2 id="runtimeTitle">主体</h2><button type="button" class="icon-button" data-close="runtimeDialog" aria-label="关闭主体管理"><svg><use href="#i-close"/></svg></button></header>
+    <div class="dialog-body">
+      <p class="dialog-intro">稳定宿主维持服务，A／B 主体轮流承担生产与备选。实验源码先冻结为不可变版本，通过隔离检查后才能激活。</p>
+      <section class="runtime-current" aria-label="当前活动主体">
+        <div class="runtime-label">当前活动主体</div>
+        <div class="runtime-version-row"><strong id="activeVersion" class="runtime-version">—</strong><span id="activeSlot" class="status-badge">读取中</span></div>
+        <p id="activeRuntimeDetail" class="runtime-detail">正在读取稳定宿主状态…</p>
+      </section>
+      <div id="candidateStatus" class="runtime-message" role="status"></div>
+      <div class="runtime-actions">
+        <button id="prepareCandidate" type="button" class="secondary-button">从实验源码准备候选</button>
+        <button id="activateCandidate" type="button" class="primary-button" disabled>激活候选</button>
+        <button id="rollbackRuntime" type="button" class="secondary-button" disabled>回滚上一版本</button>
+      </div>
+      <p class="security-note">当前实验根目录的源码会在准备时复制到版本库。候选先使用隔离数据检查，激活前再接入正式数据；正在生成的回复不会被强制切换。</p>
+      <section class="runtime-history" aria-labelledby="historyTitle">
+        <h3 id="historyTitle">历史版本</h3>
+        <div id="versionList" class="version-list"><div class="list-placeholder">正在读取版本…</div></div>
+      </section>
     </div>
   </dialog>
 

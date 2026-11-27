@@ -3,3 +3,7 @@ __pycache__/
 data/
 .pytest_cache/
 .DS_Store
+
+# Local identity and API credentials (never commit these files)
+/001.key
+/灵魂架构/

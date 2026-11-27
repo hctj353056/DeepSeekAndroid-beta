@@ -20,6 +20,10 @@ class ChatService:
         self._active: dict[str, tuple[threading.Event, str]] = {}
         self._lock = threading.RLock()
 
+    def active_count(self) -> int:
+        with self._lock:
+            return len(self._active)
+
     def cancel(self, request_id: str) -> bool:
         with self._lock:
             active = self._active.get(request_id)

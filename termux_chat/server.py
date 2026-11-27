@@ -55,7 +55,7 @@ def make_handler(context, plugin_manager, web_root: Path):
         return config
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "DeepSeekTermux/0.0.2"
+        server_version = "DeepSeekTermux/0.0.6"
         protocol_version = "HTTP/1.1"
 
         def log_message(self, fmt, *args):
@@ -108,6 +108,7 @@ def make_handler(context, plugin_manager, web_root: Path):
                         "version": __version__,
                         "plugins": len(plugin_manager.records),
                         "active_plugins": sum(item.enabled for item in plugin_manager.records.values()),
+                        "active_requests": context.chat.active_count(),
                     })
                 elif path == "/api/config" and method == "GET":
                     self._json(200, public_config())
