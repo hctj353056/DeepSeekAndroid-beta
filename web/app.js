@@ -794,7 +794,7 @@ function bindEvents() {
         provider: elements.provider.value,
         model: elements.model.value,
         base_url: elements.baseUrl.value,
-        reasoning_effort: elements.reasoning_effort,
+        reasoning_effort: elements.effort.value,
         system_prompt: elements.systemPrompt.value,
       };
       if (state.clearKey) updates.api_key = null;
