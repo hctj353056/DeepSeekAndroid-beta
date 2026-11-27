@@ -24,7 +24,10 @@ test("escapes code fences and preserves language and copy action", () => {
   const html = renderer.renderMarkdown("```html\n<script>alert(1)</script>\n```");
   assert.match(html, /<span>html<\/span>/);
   assert.match(html, /class="code-copy"/);
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.match(html, /&lt;/);
+  assert.match(html, /<span class="hljs-name">script<\/span>/);
+  assert.match(html, /&gt;/);
+  assert.match(html, /alert/);
   assert.doesNotMatch(html, /<script>alert/);
 });
 
@@ -80,7 +83,9 @@ test("invalid table delimiter falls back to paragraphs", () => {
 test("unclosed fence is safely rendered as an accumulating code block", () => {
   const html = renderer.renderMarkdown("```js\nconst x = 1;");
   assert.match(html, /<span>js<\/span>/);
-  assert.match(html, /const x = 1;/);
+  assert.match(html, /const/);
+  assert.match(html, /x =/);
+  assert.match(html, /1<\/span>;/);
   assert.doesNotMatch(html, /<p>const x/);
 });
 
@@ -93,7 +98,8 @@ test("ContentBlock extension point supports markdown, text and code", () => {
   ]);
   assert.match(html, /<h2>小节<\/h2>/);
   assert.match(html, /第一行<br>第二行/);
-  assert.match(html, /print\(&#39;&lt;x&gt;&#39;\)/);
+  assert.match(html, /print/);
+  assert.match(html, /&lt;x&gt;/);
   assert.throws(() => renderer.renderContent({ type: "chart", data: [] }), /暂不支持/);
 });
 
@@ -161,4 +167,15 @@ test("renders nested lists and nested blockquotes", () => {
   assert.match(list, /<li>第二项<\/li>/);
   const quote = renderer.renderMarkdown("> 外层\n> > 内层");
   assert.match(quote, /<blockquote><p>外层<\/p><blockquote><p>内层<\/p><\/blockquote><\/blockquote>/);
+});
+
+
+test("highlights known code languages while preserving safe code fallback", () => {
+  const html = renderer.renderCodeBlock("const answer = 42;", "javascript");
+  assert.match(html, /class="hljs language-javascript"/);
+  assert.match(html, /class="hljs-keyword">const<\/span>/);
+  assert.match(html, /class="hljs-number">42<\/span>/);
+  const plain = renderer.renderCodeBlock("<img src=x onerror=alert(1)>", "unknown-language");
+  assert.match(plain, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(plain, /<img\b/);
 });

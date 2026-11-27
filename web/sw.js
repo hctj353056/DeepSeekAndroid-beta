@@ -1,7 +1,7 @@
 "use strict";
 
-const CACHE = "deepseek-termux-v0.0.6-streaming-renderer";
-const ASSETS = ["/styles.css", "/response-renderer.js", "/app.js", "/manifest.webmanifest", "/icon.svg"];
+const CACHE = "deepseek-termux-v0.0.6-code-highlighting";
+const ASSETS = ["/styles.css", "/response-renderer.js", "/vendor/highlight.min.js", "/app.js", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

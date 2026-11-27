@@ -1,10 +1,10 @@
 "use strict";
 
 (function exposeResponseRenderer(root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === "object" && module.exports) module.exports = api;
   else root.DSAResponseRenderer = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function createResponseRenderer() {
+})(typeof globalThis !== "undefined" ? globalThis : this, function createResponseRenderer(root) {
   const COPY_ICON = '<svg aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
   const TOKEN_START = "\uE000";
   const TOKEN_END = "\uE001";
@@ -76,9 +76,25 @@
     return text.replace(/\uE000(\d+)\uE001/g, (_, index) => tokens[Number(index)]);
   }
 
+  const highlighter = root.hljs || (typeof module === "object" && module.exports
+    ? require("./vendor/highlight.min.js")
+    : null);
+
   function renderCodeBlock(code, language = "") {
-    const label = String(language || "code").trim().slice(0, 40) || "code";
-    return `<div class="code-block"><div class="code-header"><span>${escapeHtml(label)}</span><button type="button" class="code-copy">${COPY_ICON}复制</button></div><pre><code>${escapeHtml(code)}</code></pre></div>`;
+    const source = String(code ?? "");
+    const rawLanguage = String(language || "").trim().slice(0, 40);
+    const languageId = rawLanguage.toLowerCase().replace(/[^a-z0-9_+-]/g, "");
+    const label = rawLanguage || "code";
+    let rendered = escapeHtml(source);
+    if (highlighter && languageId && highlighter.getLanguage(languageId)) {
+      try {
+        rendered = highlighter.highlight(source, { language: languageId, ignoreIllegals: true }).value;
+      } catch {
+        rendered = escapeHtml(source);
+      }
+    }
+    const codeClass = languageId ? ` class="hljs language-${escapeHtml(languageId)}"` : "";
+    return `<div class="code-block"><div class="code-header"><span>${escapeHtml(label)}</span><button type="button" class="code-copy">${COPY_ICON}复制</button></div><pre><code${codeClass}>${rendered}</code></pre></div>`;
   }
 
   function splitTableRow(line) {
