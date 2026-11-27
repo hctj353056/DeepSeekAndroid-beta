@@ -65,7 +65,7 @@ def make_handler(context, plugin_manager, web_root: Path):
                 diagnostics.record("INFO", "http.access", {
                     "method": self.command,
                     "path": urlsplit(self.path).path,
-                    "message": str(fmt % args)[:300],
+                    "message": "HTTP request handled",
                 })
 
         def _json(self, status: int, data) -> None:
