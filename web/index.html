@@ -9,7 +9,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
+  <script src="/app.js" defer></script>\n  <script src="/diagnostics.js" defer></script>
 </head>
 <body>
   <svg class="svg-defs" aria-hidden="true">
@@ -59,7 +59,7 @@
       <header class="topbar">
         <button id="menuButton" class="icon-button mobile-only" aria-label="打开侧边栏"><svg><use href="#i-menu"/></svg></button>
         <h1 id="conversationTitle" class="conversation-title">新对话</h1>
-        <button id="newChatTop" class="icon-button" aria-label="新对话"><svg><use href="#i-plus"/></svg></button>
+        <button id="diagnosticsButton" class="icon-button diagnostics-button" aria-label="诊断日志" title="诊断日志"><svg><use href="#i-check"/></svg></button>\n        <button id="newChatTop" class="icon-button" aria-label="新对话"><svg><use href="#i-plus"/></svg></button>
       </header>
 
       <section id="chatScroll" class="chat-scroll" aria-label="聊天内容">
@@ -121,6 +121,24 @@
       <p class="dialog-intro">模型、存储、Agent 循环与工具均通过统一上下文协作。启停会即时注册或撤销对应能力。</p>
       <div id="pluginList" class="plugin-list"><div class="list-placeholder">正在读取插件…</div></div>
       <p class="security-note">插件拥有与主程序相同的本机权限，只放置你信任的 Python 插件。新目录在重启后自动发现。</p>
+    </div>
+  </dialog>
+
+  <dialog id="diagnosticsDialog" class="dialog diagnostics-dialog" aria-labelledby="diagnosticsTitle">
+    <header class="dialog-header"><h2 id="diagnosticsTitle">诊断日志</h2><button type="button" class="icon-button" data-close="diagnosticsDialog" aria-label="关闭诊断日志"><svg><use href="#i-close"/></svg></button></header>
+    <div class="dialog-body diagnostics-body">
+      <p class="dialog-intro">记录你执行的操作、看到的现象和预期结果。程序错误会自动记录；聊天正文不会自动加入日志。</p>
+      <form id="diagnosticsForm" class="diagnostics-form">
+        <label class="field"><span>操作步骤</span><textarea name="action" rows="2" maxlength="500" required placeholder="例如：打开插件页面并向上滑动"></textarea></label>
+        <label class="field"><span>实际现象</span><textarea name="observed" rows="3" maxlength="1500" required placeholder="例如：页面没有滚动"></textarea></label>
+        <label class="field"><span>预期结果</span><textarea name="expected" rows="2" maxlength="1000" placeholder="例如：页面内容可以上下滚动"></textarea></label>
+        <label class="field"><span>复现步骤（可选）</span><textarea name="steps" rows="3" maxlength="1500" placeholder="按顺序描述如何复现"></textarea></label>
+        <label class="field"><span>补充说明（可选）</span><textarea name="note" rows="2" maxlength="1000" placeholder="设备环境、截图说明等"></textarea></label>
+        <button type="submit" class="primary-button">保存测试记录</button>
+      </form>
+      <button id="diagnosticsExport" type="button" class="secondary-button diagnostics-export">导出诊断包（ZIP）</button>
+      <p id="diagnosticsStatus" class="diagnostics-status" role="status" aria-live="polite">导出包只包含诊断日志和环境信息，不包含会话历史。</p>
+      <p class="security-note">发送前请自行检查诊断包。日志会对常见凭据字段进行脱敏，但不应包含你不希望分享的私人信息。</p>
     </div>
   </dialog>
 
