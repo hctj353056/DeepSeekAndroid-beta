@@ -43,5 +43,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - name: Check diagnostic capture JavaScript syntax
+        run: node --check web/diagnostics.js
       - name: Run response renderer tests
         run: node --test tests/test_response_renderer.js
