@@ -1,4 +1,4 @@
-name: Python tests
+name: Tests
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+      - "release/**"
 
 permissions:
   contents: read
@@ -28,3 +29,15 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Run standard-library tests
         run: python -m unittest discover -s tests -v
+
+  response-renderer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run response renderer tests
+        run: node --test tests/test_response_renderer.js
