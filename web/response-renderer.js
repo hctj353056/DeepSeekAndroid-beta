@@ -76,9 +76,25 @@
     return text.replace(/\uE000(\d+)\uE001/g, (_, index) => tokens[Number(index)]);
   }
 
+  const highlighter = root.hljs || (typeof module === "object" && module.exports
+    ? require("./vendor/highlight.min.js")
+    : null);
+
   function renderCodeBlock(code, language = "") {
-    const label = String(language || "code").trim().slice(0, 40) || "code";
-    return `<div class="code-block"><div class="code-header"><span>${escapeHtml(label)}</span><button type="button" class="code-copy">${COPY_ICON}复制</button></div><pre><code>${escapeHtml(code)}</code></pre></div>`;
+    const source = String(code ?? "");
+    const rawLanguage = String(language || "").trim().slice(0, 40);
+    const languageId = rawLanguage.toLowerCase().replace(/[^a-z0-9_+-]/g, "");
+    const label = rawLanguage || "code";
+    let rendered = escapeHtml(source);
+    if (highlighter && languageId && highlighter.getLanguage(languageId)) {
+      try {
+        rendered = highlighter.highlight(source, { language: languageId, ignoreIllegals: true }).value;
+      } catch {
+        rendered = escapeHtml(source);
+      }
+    }
+    const codeClass = languageId ? ` class="hljs language-${escapeHtml(languageId)}"` : "";
+    return `<div class="code-block"><div class="code-header"><span>${escapeHtml(label)}</span><button type="button" class="code-copy">${COPY_ICON}复制</button></div><pre><code${codeClass}>${rendered}</code></pre></div>`;
   }
 
   function splitTableRow(line) {
