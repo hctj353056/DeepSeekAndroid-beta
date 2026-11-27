@@ -16,6 +16,31 @@ from . import __version__
 MAX_BODY = 1024 * 1024
 
 
+def trusted_api_request(host_header: str, origin: str, content_type: str, fetch_site: str, server_port: int, bind_host: str, method: str) -> bool:
+    """Reject DNS-rebinding and cross-origin browser requests to the local API."""
+    if not host_header:
+        return False
+    try:
+        host = urlsplit("//" + host_header)
+        if host.port != server_port or not host.hostname:
+            return False
+    except ValueError:
+        return False
+    hostname = host.hostname.lower().rstrip(".")
+    loopback_names = {"127.0.0.1", "localhost", "::1"}
+    if bind_host in loopback_names and hostname not in loopback_names:
+        return False
+    if fetch_site.lower() == "cross-site":
+        return False
+    if origin:
+        parsed_origin = urlsplit(origin)
+        if parsed_origin.scheme != "http" or parsed_origin.netloc.lower() != host_header.lower():
+            return False
+    if method in {"POST", "PUT", "PATCH"} and not content_type.lower().startswith("application/json"):
+        return False
+    return True
+
+
 class AppHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -65,6 +90,17 @@ def make_handler(context, plugin_manager, web_root: Path):
             path = urlsplit(self.path).path
             if not path.startswith("/api/"):
                 return False
+            if not trusted_api_request(
+                self.headers.get("Host", ""),
+                self.headers.get("Origin", ""),
+                self.headers.get("Content-Type", ""),
+                self.headers.get("Sec-Fetch-Site", ""),
+                self.server.server_address[1],
+                self.server.server_address[0],
+                method,
+            ):
+                self._json(403, {"error": "请求来源未通过本地 API 校验"})
+                return True
             try:
                 if path == "/api/health" and method == "GET":
                     self._json(200, {
