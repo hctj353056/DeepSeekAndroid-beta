@@ -117,6 +117,8 @@ class ChatService:
                 request = self._request(conversation_id, options, tools)
                 provider = self.context.models.get(request["provider"])
                 accumulated_calls: dict = {}
+                server_tool_calls = None
+                annotations = None
                 step_content: list[str] = []
                 step_reasoning: list[str] = []
                 self.context.events.emit("chat.step", {
@@ -142,6 +144,12 @@ class ChatService:
                         yield {"type": "reasoning", "text": text}
                     elif event_type == "tool_call":
                         self._merge_tool_call(accumulated_calls, event)
+                    elif event_type == "server_tool_calls":
+                        server_tool_calls = event.get("server_tool_calls")
+                    elif event_type == "annotations":
+                        annotations = event.get("annotations")
+                    elif event_type == "server_tool_event":
+                        yield {"type": "server_tool_event", "event": event.get("event", {})}
                     elif event_type == "usage":
                         usage = event.get("usage") or usage
 
@@ -151,6 +159,10 @@ class ChatService:
                     "content": "".join(step_content),
                     "reasoning": "".join(step_reasoning),
                 }
+                if server_tool_calls is not None:
+                    assistant["server_tool_calls"] = server_tool_calls
+                if annotations is not None:
+                    assistant["annotations"] = annotations
                 if calls:
                     for index, call in enumerate(calls):
                         call["id"] = call["id"] or f"call_{uuid.uuid4().hex[:20]}"
