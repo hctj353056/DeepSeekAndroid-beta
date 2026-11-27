@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .versions import VersionStore
+from .diagnostics import DiagnosticLogger
 
 
 @dataclass
@@ -32,6 +33,8 @@ class RuntimeSupervisor:
     def __init__(self, root: Path, data_dir: Path, *, startup_timeout: float = 15.0) -> None:
         self.root = Path(root).resolve()
         self.data_dir = Path(data_dir).resolve()
+        self.diagnostics = DiagnosticLogger(self.data_dir)
+        self.diagnostics.record("INFO", "supervisor.initialized", {"root": str(self.root)})
         self.store = VersionStore(self.root, self.data_dir)
         self.startup_timeout = float(startup_timeout)
         self.slots: dict[str, WorkerHandle] = {}
@@ -294,6 +297,7 @@ class RuntimeSupervisor:
 
     def shutdown(self) -> None:
         with self._lock:
+            self.diagnostics.record("INFO", "supervisor.shutdown", {"active_slot": self.active_slot})
             for slot in tuple(self.slots):
                 try:
                     self._stop_worker(slot)
